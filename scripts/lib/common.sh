@@ -18,7 +18,7 @@ ks_verify_sha256() {
   local file=$1 expected=$2 actual
   [[ $expected =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR "Invalid SHA256: $file"; return 2; }
   actual=$(ks_sha256_file "$file")
-  [[ ${actual,,} == ${expected,,} ]] || { ks_log ERROR "SHA256 mismatch: $file"; return 1; }
+  [[ ${actual,,} == "${expected,,}" ]] || { ks_log ERROR "SHA256 mismatch: $file"; return 1; }
 }
 ks_atomic_write() {
   local target=$1 mode=${2:-0600} dir tmp

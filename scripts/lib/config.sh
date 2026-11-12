@@ -12,7 +12,7 @@ ks_config_load() {
     [[ $key =~ ^[A-Z][A-Z0-9_]*$ ]] || { ks_log ERROR "Invalid config key at line $lineno"; return 2; }
     [[ $value != *'$('* && $value != *$'\x60'* && $value != *';'* && $value != *'&'* && $value != *'|'* && $value != *'<'* && $value != *'>'* && $value != *$'\r'* ]] || { ks_log ERROR "Unsafe config value at line $lineno"; return 2; }
     printf -v "$key" '%s' "$value"
-    export "$key"
+    export "$key=$value"
   done < "$file"
 }
 ks_config_validate() {
