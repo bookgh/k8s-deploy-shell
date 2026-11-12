@@ -56,3 +56,8 @@ setup() {
   run ks_manifest_verify_cache "$TMP" "$BATS_TEST_TMPDIR/cache"
   [ "$status" -ne 0 ]
 }
+
+@test "project artifact manifest accepts pinned underscore filenames" {
+  run ks_manifest_validate "$ROOT/artifacts/manifest.tsv"
+  [ "$status" -eq 0 ]
+}

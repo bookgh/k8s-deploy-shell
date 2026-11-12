@@ -16,7 +16,7 @@ ks_manifest_validate() {
     [[ -n $name && -n $version && -n $arch && -n $url && -n $sha && -n $file ]] || { ks_log ERROR "Empty manifest field at line $lineno"; return 2; }
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ && $version =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]] || return 2
     [[ $arch == amd64 || $arch == x86_64 || $arch == noarch ]] || return 2
-    [[ $url =~ ^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/?#\[\]@!$%&()*+,;=-]*)?$ ]] || { ks_log ERROR "Unsafe or non-HTTPS URL at line $lineno"; return 2; }
+    [[ $url =~ ^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~:/?@!$%&()*+,;=-]+)?$ ]] || { ks_log ERROR "Unsafe or non-HTTPS URL at line $lineno"; return 2; }
     [[ $sha =~ ^[a-fA-F0-9]{64}$ ]] || return 2
     [[ $file =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ && $file != *'..'* ]] || return 2
     if [[ -n ${names[$name]:-} || -n ${filenames[$file]:-} ]]; then
