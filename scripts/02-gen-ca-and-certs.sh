@@ -45,7 +45,7 @@ ks_verify_ca() {
   end_epoch=$(date -u -d "$end_date" +%s)
   now_epoch=$(date -u +%s)
   remaining=$((end_epoch - now_epoch))
-  ((remaining >= 876000 * 3600 - 86400)) || { ks_log ERROR "Certificate validity is shorter than 876000h: $cert"; return 1; }
+  ((remaining >= 876024 * 3600 - 86400)) || { ks_log ERROR "Certificate validity is shorter than 876000h: $cert"; return 1; }
 }
 
 ks_generate_ca() {
@@ -58,7 +58,7 @@ ks_generate_ca() {
   "names": [
     { "C": "US", "L": "Kubernetes", "O": "Kubernetes", "OU": "Certificate Authority", "ST": "Cluster" }
   ],
-  "ca": { "expiry": "876000h", "pathlen": 1 }
+  "ca": { "expiry": "876024h", "pathlen": 1 }
 }
 CSR
   cat > "$directory/ca-config.json" <<'CONFIG_JSON'
@@ -130,7 +130,8 @@ ks_pki_generate() {
   rm -rf -- "$stage/.tools"
   cat > "$stage/metadata/PKI-MANIFEST.txt" <<META
 CFSSL_VERSION=$CFSSL_VERSION
-CERTIFICATE_DURATION=876000h
+ROOT_CA_DURATION=876024h
+LEAF_CERTIFICATE_DURATION=876000h
 GENERATED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 CA_DOMAINS=kubernetes,etcd,front-proxy
 SERVICE_ACCOUNT_ALGORITHM=RSA-2048
@@ -173,7 +174,7 @@ IFS=$'\t' read -r CFSSLJSON_FILE CFSSLJSON_SHA CFSSLJSON_VERSION CFSSLJSON_ARCH 
 
 if [[ $APPLY != true || ${KS_DRY_RUN:-true} == true ]]; then
   ks_log INFO 'PKI preview only; no directories, keys or certificates created'
-  printf 'PKI root: %s\nCFSSL: %s (%s) %s\nCFSSLJSON: %s %s\nTrust domains: kubernetes, etcd, front-proxy\nServiceAccount key: independent RSA-2048\nCertificate validity: 876000h (100 years)\n' "$PKI_ROOT_PATH" "$CFSSL_VERSION" "$CFSSL_FILE" "$CFSSL_URL" "$CFSSLJSON_FILE" "$CFSSLJSON_URL"
+  printf 'PKI root: %s\nCFSSL: %s (%s) %s\nCFSSLJSON: %s %s\nTrust domains: kubernetes, etcd, front-proxy\nServiceAccount key: independent RSA-2048\nRoot CA validity: 876024h; leaf certificate validity: 876000h (100 years)\n' "$PKI_ROOT_PATH" "$CFSSL_VERSION" "$CFSSL_FILE" "$CFSSL_URL" "$CFSSLJSON_FILE" "$CFSSLJSON_URL"
   printf 'Existing non-empty PKI will be rejected; CA private keys remain local and must be backed up offline.\n'
   exit 0
 fi

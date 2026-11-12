@@ -48,7 +48,7 @@ Pod CIDR、Service CIDR、节点网段、管理网段不得冲突。防火墙按
 
 ## 6. PKI 与安全
 
-Kubernetes Root CA、ETCD CA、Front Proxy CA 分离；ServiceAccount key 独立；Harbor 使用独立证书策略。100 年证书期限使用 CFSSL 876000h 并实际验证。已有 PKI 必须检查用途、SAN、有效期、密钥匹配和权限，禁止覆盖。私钥目录 0700、私钥 0600；CA 私钥离线备份。admin kubeconfig 仅在安装节点 output/kubeconfig/admin.kubeconfig，权限 0600。
+Kubernetes Root CA、ETCD CA、Front Proxy CA 分离；ServiceAccount key 独立；Harbor 使用独立证书策略。叶证书期限使用 CFSSL 876000h 并实际验证；根 CA 必须使用 876024h（比叶证书多 24 小时），确保签发时间差不会导致根 CA 先于叶证书过期。已有 PKI 必须检查用途、SAN、有效期、密钥匹配和权限，禁止覆盖。私钥目录 0700、私钥 0600；CA 私钥离线备份。admin kubeconfig 仅在安装节点 output/kubeconfig/admin.kubeconfig，权限 0600。
 
 etcd 使用官方二进制、Systemd、mTLS，数据目录与二进制分离；支持成员管理、健康检查、快照和恢复演练。成员变更不得清空数据目录。API Server 启用 TLS、RBAC、Node authorizer、关闭匿名访问和可配置审计。
 

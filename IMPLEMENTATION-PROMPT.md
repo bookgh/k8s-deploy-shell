@@ -76,7 +76,7 @@ Caddy 默认端口 2026，端口可配置。HTTP 根目录只包含非敏感制�
 
 ### 4.3 PKI 与证书
 
-使用 CFSSL 建立 Kubernetes Root CA、ETCD CA、Front Proxy CA；ServiceAccount key 独立；Harbor 证书独立。用户要求证书有效期 100 年时，CFSSL duration 使用 `876000h`，不得写 `100y`。CI 必须用锁定的 CFSSL 实际签发根/叶证书并验证 NotBefore/NotAfter。已有 PKI 必须逐项检查用途、SAN、有效期、密钥匹配和权限，严禁无条件覆盖。私钥目录 0700、私钥文件 0600。提供 CA 离线备份、审计、证书扫描、轮换和回滚流程。
+使用 CFSSL 建立 Kubernetes Root CA、ETCD CA、Front Proxy CA；ServiceAccount key 独立；Harbor 证书独立。用户要求证书有效期 100 年时，叶证书 CFSSL duration 使用 `876000h`，不得写 `100y`；根 CA CSR 的 `CA.expiry` 使用 `876024h`，确保根 CA 比 100 年叶证书至少长 24 小时。CI 必须用锁定的 CFSSL 实际签发根/叶证书并验证 NotBefore/NotAfter。已有 PKI 必须逐项检查用途、SAN、有效期、密钥匹配和权限，严禁无条件覆盖。私钥目录 0700、私钥文件 0600。提供 CA 离线备份、审计、证书扫描、轮换和回滚流程。
 
 ### 4.4 etcd 与控制平面
 

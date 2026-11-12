@@ -27,7 +27,7 @@ bin/deploy-step.sh --config cluster.env --dry-run pki
 
 `--check-ssh` is a read-only target check for SSH HostKey, remote OS release and architecture. It only performs SSH when `DRY_RUN=false`; with the example default it prints the SSH plan. No remote system changes are made.
 
-System initialization and PKI are currently preview-only. Caddy deployment is guarded by an explicit apply flag and requires the installation node to be Rocky Linux 9 / x86_64. Their `--apply` paths fail closed until their full safety checks, rollback and Rocky Linux 9 integration tests are implemented. Do not bypass these guards.
+System initialization remains preview-only. PKI `--apply` generates only three independent root CAs (Kubernetes, etcd, front-proxy) and the separate ServiceAccount keypair. Root CA validity is set to `876024h`; leaf certificates will use `876000h`. Leaf certificates, SAN profiles, node key distribution, rotation and recovery are not yet implemented. Existing non-empty PKI is never overwritten. CA private keys remain local and must be backed up offline. Caddy deployment is guarded by an explicit apply flag and requires the installation node to be Rocky Linux 9 / x86_64. Do not bypass these guards.
 
 ## Honest status
 
