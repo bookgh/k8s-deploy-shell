@@ -7,8 +7,7 @@ setup() {
   source "$ROOT/scripts/lib/config.sh"
 }
 @test "example configuration validates and honors dry-run" {
-  run ks_config_load "$TMP"
-  [ "$status" -eq 0 ]
+  ks_config_load "$TMP"
   [ "$KS_DRY_RUN" = true ]
   run ks_config_validate
   [ "$status" -eq 0 ]
