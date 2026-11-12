@@ -28,7 +28,7 @@ ks_cache_root() {
   [[ $path == /* ]] || path=$ROOT/$path
   ks_require_cmd realpath
   path=$(realpath -m -- "$path")
-  [[ $path != / && $path != /etc && $path != /root && $path != /home ]] || { ks_log ERROR "Unsafe artifact root: $path"; return 2; }
+  [[ $path == /var/lib/k8s-deploy-shell/artifacts/* ]] || { ks_log ERROR "Caddy root must be under /var/lib/k8s-deploy-shell/artifacts/: $path"; return 2; }
   [[ $path =~ ^/[A-Za-z0-9._/-]+$ && $path != *'/../'* && $path != */.. ]] || { ks_log ERROR "Artifact root contains unsafe path characters: $path"; return 2; }
   REPLY=$path
 }
@@ -40,7 +40,7 @@ ks_preflight_install_node() {
   os_version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release | tr -d '"')
   [[ $os_id == rocky && ${os_version%%.*} == 9 ]] || { ks_log ERROR "Expected Rocky Linux 9, found $os_id $os_version"; return 2; }
   [[ $(uname -m) == x86_64 ]] || { ks_log ERROR 'Expected x86_64 architecture'; return 2; }
-  for cmd in bash curl tar sha256sum awk ssh flock systemctl ss realpath install useradd id chgrp chmod find; do ks_require_cmd "$cmd"; done
+  for cmd in bash curl tar sha256sum awk ssh flock systemctl ss realpath install useradd groupadd getent id chgrp chmod find mktemp cp mv rm; do ks_require_cmd "$cmd"; done
   ((ARTIFACT_HTTP_PORT >= 1024 && ARTIFACT_HTTP_PORT <= 65535)) || { ks_log ERROR 'Caddy port must be in range 1024-65535'; return 2; }
   listeners=$(ss -H -ltn "sport = :$ARTIFACT_HTTP_PORT")
   [[ -z $listeners ]] || { ks_log ERROR "TCP port $ARTIFACT_HTTP_PORT is already listening"; return 1; }
@@ -148,7 +148,7 @@ ks_caddy_apply() {
   mv -f -- "$candidate_conf" /etc/caddy/Caddyfile
   mv -f -- "$candidate_unit" /etc/systemd/system/caddy.service
   systemctl daemon-reload
-  if ! systemctl enable --now caddy.service; then
+  if ! systemctl enable caddy.service || ! systemctl restart caddy.service; then
     [[ -z $old_bin ]] && rm -f /usr/local/bin/caddy || cp -a "$old_bin" /usr/local/bin/caddy
     [[ -z $old_conf ]] && rm -f /etc/caddy/Caddyfile || cp -a "$old_conf" /etc/caddy/Caddyfile
     [[ -z $old_unit ]] && rm -f /etc/systemd/system/caddy.service || cp -a "$old_unit" /etc/systemd/system/caddy.service
@@ -159,8 +159,17 @@ ks_caddy_apply() {
     ks_log ERROR 'Caddy service activation failed; previous files restored'
     return 1
   fi
-  systemctl is-active --quiet caddy.service
-  curl --fail --silent --show-error --max-time 5 --output /dev/null "http://127.0.0.1:$ARTIFACT_HTTP_PORT/$file"
+  if ! systemctl is-active --quiet caddy.service || ! curl --fail --silent --show-error --max-time 5 --output /dev/null "http://127.0.0.1:$ARTIFACT_HTTP_PORT/$file"; then
+    [[ -z $old_bin ]] && rm -f /usr/local/bin/caddy || cp -a "$old_bin" /usr/local/bin/caddy
+    [[ -z $old_conf ]] && rm -f /etc/caddy/Caddyfile || cp -a "$old_conf" /etc/caddy/Caddyfile
+    [[ -z $old_unit ]] && rm -f /etc/systemd/system/caddy.service || cp -a "$old_unit" /etc/systemd/system/caddy.service
+    systemctl daemon-reload
+    if [[ -z $old_unit ]]; then systemctl disable caddy.service >/dev/null 2>&1 || true; fi
+    systemctl restart caddy.service || true
+    rm -rf -- "$tempdir"
+    ks_log ERROR 'Caddy health check failed; previous files restored'
+    return 1
+  fi
   rm -rf -- "$tempdir"
   ks_log INFO "Caddy artifact server is active on TCP $ARTIFACT_HTTP_PORT"
 }
@@ -180,7 +189,7 @@ case $COMMAND in
       ks_with_lock /run/lock/ks-deploy-shell-caddy.lock ks_caddy_apply "$CACHE_ROOT" "$MANIFEST"
     else
       ks_log INFO 'Caddy preview only; no files, users, permissions or services changed'
-      printf 'Artifact: caddy %s (%s)\nURL: %s\nSHA256: %s\nCache: %s\nListen: :%s\n' "$VERSION" "$ARCH" "$URL" "$SHA" "$CACHE_ROOT" "$ARTIFACT_HTTP_PORT"
+      printf 'Artifact: caddy %s (%s)\nFile: %s\nURL: %s\nSHA256: %s\nCache: %s\nListen: :%s\n' "$VERSION" "$ARCH" "$FILE" "$URL" "$SHA" "$CACHE_ROOT" "$ARTIFACT_HTTP_PORT"
     fi
     ;;
 esac
