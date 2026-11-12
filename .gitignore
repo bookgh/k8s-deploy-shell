@@ -1,10 +1,11 @@
-/pki/**
+/pki/*
 !/pki/.gitkeep
-/output/**
+/output/*
 !/output/.gitkeep
-/state/**
+/state/*
 !/state/.gitkeep
-/artifacts/cache/**
+/artifacts/cache/*
+!/artifacts/cache/.gitkeep
 cluster.env
 config/known_hosts
 *.key
@@ -13,3 +14,4 @@ config/known_hosts
 *.kubeconfig
 *.log
 *.tmp
+*.swp
