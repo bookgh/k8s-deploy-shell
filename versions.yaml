@@ -1,0 +1,17 @@
+# Authoritative component version inventory. Populate verified artifact URLs and SHA256 separately.
+kubernetes:
+  version: v1.37.2
+etcd:
+  version: ""
+containerd:
+  version: ""
+runc:
+  version: ""
+cfssl:
+  version: ""
+helm:
+  version: ""
+caddy:
+  version: ""
+nginx:
+  version: ""

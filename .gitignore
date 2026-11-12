@@ -1,0 +1,15 @@
+/pki/**
+!/pki/.gitkeep
+/output/**
+!/output/.gitkeep
+/state/**
+!/state/.gitkeep
+/artifacts/cache/**
+cluster.env
+config/known_hosts
+*.key
+*.pem
+*.crt
+*.kubeconfig
+*.log
+*.tmp
