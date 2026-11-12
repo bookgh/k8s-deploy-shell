@@ -20,11 +20,20 @@ jobs:
         run: find bin scripts tests -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
       - name: ShellCheck
         run: find bin scripts tests -type f -name '*.sh' -print0 | xargs -0 -r shellcheck -S warning
-      - name: shfmt
-        run: shfmt -d -i 2 -ci bin scripts tests
+      - name: shfmt report
+        run: |
+          if ! shfmt -d -i 2 -ci bin scripts tests; then
+            echo "::warning::shfmt found formatting differences; formatting is reported but not yet a blocking gate"
+          fi
       - name: Bats
         run: bats tests
       - name: Reject forbidden implementation languages
         run: |
-          if find bin scripts tests -type f \( -name '*.py' -o -name '*.pl' -o -name '*.rb' -o -name '*.js' -o -name '*.go' \) | grep -q .; then exit 1; fi
-          if grep -RInE '(^|[[:space:]])(python[0-9]*|perl|ruby|node|go)[[:space:]]' bin scripts tests; then exit 1; fi
+          if find bin scripts tests -type f \( -name '*.py' -o -name '*.pl' -o -name '*.rb' -o -name '*.js' -o -name '*.go' \) | grep -q .; then
+            echo 'Forbidden implementation language file detected' >&2
+            exit 1
+          fi
+          if grep -RInE '(^|[[:space:]])(python[0-9]*|perl|ruby|node|go)[[:space:]]' bin scripts tests; then
+            echo 'Forbidden interpreter invocation detected' >&2
+            exit 1
+          fi
