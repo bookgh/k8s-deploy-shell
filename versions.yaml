@@ -12,6 +12,6 @@ cfssl:
 helm:
   version: ""
 caddy:
-  version: ""
+  version: "2.11.9"
 nginx:
   version: ""

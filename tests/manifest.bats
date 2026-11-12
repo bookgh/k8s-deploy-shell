@@ -38,3 +38,21 @@ setup() {
   [ "$status" -eq 0 ]
   [ ! -e "$BATS_TEST_TMPDIR/no-cache" ]
 }
+
+@test "manifest lookup returns the pinned Caddy asset" {
+  printf 'name\tversion\tarch\turl\tsha256\tfilename\ncaddy\t2.11.9\tamd64\thttps://github.com/caddyserver/caddy/releases/download/v2.11.9/caddy_2.11.9_linux_amd64.tar.gz\t%s\tcaddy.tar.gz\n' "$HASH" > "$TMP"
+  run ks_manifest_lookup "$TMP" caddy
+  [ "$status" -eq 0 ]
+  [[ "$output" == $'caddy.tar.gz\t'* ]]
+}
+@test "cache verification detects missing or corrupted assets" {
+  printf 'name\tversion\tarch\turl\tsha256\tfilename\nfoo\t1.0\tamd64\thttps://example.invalid/foo\t%s\tfoo.tar.gz\n' "$HASH" > "$TMP"
+  mkdir -p "$BATS_TEST_TMPDIR/cache"
+  printf x > "$BATS_TEST_TMPDIR/cache/foo.tar.gz"
+  KS_DRY_RUN=false
+  run ks_manifest_verify_cache "$TMP" "$BATS_TEST_TMPDIR/cache"
+  [ "$status" -eq 0 ]
+  printf y > "$BATS_TEST_TMPDIR/cache/foo.tar.gz"
+  run ks_manifest_verify_cache "$TMP" "$BATS_TEST_TMPDIR/cache"
+  [ "$status" -ne 0 ]
+}

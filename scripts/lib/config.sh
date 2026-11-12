@@ -81,7 +81,7 @@ ks_config_validate() {
   [[ $ENABLE_FIREWALL_CONFIG == true || $ENABLE_FIREWALL_CONFIG == false ]] || return 2
   [[ $DRY_RUN == true || $DRY_RUN == false ]] || return 2
   [[ $INSTALL_NODE_ADVERTISE_ADDR =~ ^[A-Za-z0-9.-]+$ && $CLUSTER_DOMAIN =~ ^[A-Za-z0-9.-]+$ ]] || return 2
-  [[ $SSH_KNOWN_HOSTS_FILE != *[[:space:]]* && $ARTIFACT_HTTP_ROOT != *[[:space:]]* && $INSTALL_ROOT != *[[:space:]]* && $REMOTE_INSTALL_ROOT != *[[:space:]]* ]] || return 2
+  [[ $SSH_KNOWN_HOSTS_FILE != *[[:space:]]* && $ARTIFACT_HTTP_ROOT == /var/lib/k8s-deploy-shell/artifacts/* && $INSTALL_ROOT != *[[:space:]]* && $REMOTE_INSTALL_ROOT != *[[:space:]]* ]] || { ks_log ERROR "ARTIFACT_HTTP_ROOT must be under /var/lib/k8s-deploy-shell/artifacts"; return 2; }
   ks_cidr_parse "$POD_CIDR" || { ks_log ERROR "Invalid POD_CIDR: $POD_CIDR"; return 2; }
   ks_cidr_parse "$SERVICE_CIDR" || { ks_log ERROR "Invalid SERVICE_CIDR: $SERVICE_CIDR"; return 2; }
   if ks_cidr_overlaps "$POD_CIDR" "$SERVICE_CIDR"; then

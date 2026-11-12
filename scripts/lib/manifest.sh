@@ -56,3 +56,31 @@ ks_manifest_fetch() {
     mv -f -- "$tmp" "$target"
   done < "$manifest"
 }
+
+ks_manifest_lookup() {
+  local manifest=${1:?manifest required} wanted=${2:?artifact name required}
+  local line name version arch url sha file
+  ks_manifest_validate "$manifest"
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z $line || $line == \#* || $line == $'name\tversion\tarch\turl\tsha256\tfilename' ]] && continue
+    IFS=$'\t' read -r name version arch url sha file <<< "$line"
+    if [[ $name == "$wanted" ]]; then
+      printf '%s\t%s\t%s\t%s\t%s\n' "$file" "$sha" "$version" "$arch" "$url"
+      return 0
+    fi
+  done < "$manifest"
+  ks_log ERROR "Artifact not found in manifest: $wanted"
+  return 1
+}
+ks_manifest_verify_cache() {
+  local manifest=${1:?manifest required} root=${2:?cache root required}
+  local line name version arch url sha file
+  ks_manifest_validate "$manifest"
+  [[ -d $root ]] || { ks_log ERROR "Artifact cache missing: $root"; return 2; }
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z $line || $line == \#* || $line == $'name\tversion\tarch\turl\tsha256\tfilename' ]] && continue
+    IFS=$'\t' read -r name version arch url sha file <<< "$line"
+    [[ -f $root/$file ]] || { ks_log ERROR "Artifact missing from cache: $file"; return 1; }
+    ks_verify_sha256 "$root/$file" "$sha"
+  done < "$manifest"
+}

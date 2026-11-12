@@ -29,7 +29,7 @@ bin/install.sh --config cluster.env validate
 bin/install.sh --config cluster.env plan
 ```
 
-示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。cluster.env.example 是示例，不是可直接用于生产的配置。charts.yaml 中的空版本必须在安装前锁定。
+示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。M2 增加安装节点 Rocky Linux 9/amd64 预检、缓存校验和受保护的 Caddy Systemd 安装入口。cluster.env.example 是示例，不是可直接用于生产的配置。charts.yaml 中的空版本必须在安装前锁定。
 
 ## 目录
 

@@ -4,9 +4,9 @@ This record distinguishes implemented local tooling from component deployment th
 
 | Area | Status | Evidence / limitation |
 |---|---|---|
-| M0 repository skeleton | Partial | Layout, ignore rules, CI and tests exist; shfmt currently reports formatting differences as a non-blocking warning |
-| M1 configuration/common library | Partial | Allowlisted KEY=VALUE parser, validation, logging, retry/lock/atomic-write/SHA256 helpers; CIDR overlap and full schema validation remain |
-| M2 artifacts/Caddy | Partial | TSV manifest validation/fetch and Caddy example; no populated verified manifest, Caddy service lifecycle or full dependency closure |
+| M0 repository skeleton | Partial | Layout, ignore rules, CI and tests exist; shfmt still reports formatting differences as a non-blocking warning |
+| M1 configuration/common library | Partial | Allowlisted non-executing parser; duplicate/unknown key rejection; IPv4 CIDR overlap and DNS membership checks; node role/etcd odd-membership validation; retry/lock/atomic-write/backup/SHA256 helpers; dry-run propagated to artifact preparation. Node IP inventory, complete schema and broader concurrency/failure tests remain |
+| M2 artifacts/Caddy | Partial | HTTPS-only TSV manifest with immutable asset metadata, GitHub asset SHA256 for Caddy 2.11.9, cache verification, Rocky 9/amd64 preflight and guarded Caddy Systemd installer. No artifact has been downloaded or Caddy installed; RPM/Chart/image closure remains |
 | M3 system/SSH | Partial | Strict HostKey SSH wrapper and preview-only system-init entrypoint; no Rocky 9 apply workflow or target integration |
 | M4 PKI | Partial | Safe preview entrypoint; actual CA and leaf certificate issuance, SAN profiles, rotation and recovery remain blocked |
 | M5 etcd | Not implemented | No member lifecycle, systemd deployment, mTLS rollout or snapshot restore |
@@ -19,12 +19,12 @@ This record distinguishes implemented local tooling from component deployment th
 
 ## Verification record
 
-GitHub Actions run for commit cf6a172f737360a7297847a380f258d71dda8deb: **success**.
+GitHub Actions run for commit `601c98f2e8aa8d0e35d57837e79e17f6cd8452c1`: **success**.
 
 - Bash syntax: passed.
 - ShellCheck: passed.
-- Bats: passed.
+- Bats: passed (16 tests).
 - Forbidden-language file/invocation scan: passed.
 - shfmt: executed and reported formatting differences; currently warning-only, not a blocking gate.
 
-No Rocky Linux 9 target host, SSH node inventory, certificate issuance, etcd restore, container runtime, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. Those remain NOT VERIFIED. No production CA was generated and no real cluster was modified.
+The M2 installer scripts are being added in the current development series; their first CI result is pending. No Rocky Linux 9 target host, SSH node inventory, certificate issuance, etcd restore, container runtime, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. Those remain NOT VERIFIED. No production CA was generated and no real cluster was modified.

@@ -1,5 +1,5 @@
 :2026 {
-    root * /opt/k8s-deploy-shell/artifacts/cache
+    root * /var/lib/k8s-deploy-shell/artifacts/cache
     file_server
     header {
         X-Content-Type-Options nosniff

@@ -22,7 +22,7 @@ case $COMMAND in
   validate) load_config; ks_log INFO "Configuration valid: $CONFIG" ;;
   preflight)
     load_config
-    for cmd in bash curl tar sha256sum awk ssh flock systemctl; do ks_require_cmd "$cmd"; done
+    for cmd in bash curl tar sha256sum awk ssh flock systemctl realpath; do ks_require_cmd "$cmd"; done
     [[ $(uname -m) == x86_64 ]] || { ks_log ERROR 'Expected x86_64'; exit 1; }
     df -Pk "$ROOT" | awk 'NR==2 { if ($4 < 1048576) exit 1 }' || { ks_log ERROR 'Less than 1 GiB free'; exit 1; }
     ks_log INFO 'Local preflight passed; target nodes are not checked'
@@ -36,7 +36,9 @@ case $COMMAND in
   prepare)
     load_config
     [[ -f $ROOT/artifacts/manifest.tsv ]] || { ks_log ERROR 'Missing artifacts/manifest.tsv'; exit 2; }
-    ks_manifest_fetch "$ROOT/artifacts/manifest.tsv" "$ROOT/artifacts/cache"
+    cache_root=$ARTIFACT_HTTP_ROOT
+    cache_root=$(realpath -m -- "$cache_root")
+    ks_manifest_fetch "$ROOT/artifacts/manifest.tsv" "$cache_root"
     ;;
   status) printf 'Project root: %s\nConfig: %s\nDry-run: %s\n' "$ROOT" "$CONFIG" "$KS_DRY_RUN" ;;
 esac
