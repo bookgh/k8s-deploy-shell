@@ -14,3 +14,8 @@ setup() {
   [ "$status" -ne 0 ]
   [ ! -e "$BATS_TEST_TMPDIR/pwned" ]
 }
+@test "unknown environment keys are rejected" {
+  printf '\nPATH=/tmp/attacker-bin\n' >> "$TMP"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"' _ "$ROOT" "$TMP"
+  [ "$status" -ne 0 ]
+}
