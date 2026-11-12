@@ -7,7 +7,8 @@
 - Existing non-empty CA/PKI directories cause a hard failure; no overwrite is implicit.
 - Kubernetes, etcd and front-proxy root CAs are separate; ServiceAccount signing key is independent.
 - Root CA validity is 876024h so it outlives 876000h leaf certificates by 24 hours.
-- Root CA and ServiceAccount private keys are mode 0600 under a mode 0700 PKI directory; public HTTP cache is a separate path.
+- Root CA, leaf and ServiceAccount private keys are mode 0600 under a mode 0700 PKI directory; public HTTP cache is a separate path.
+- Leaf private keys are generated on the installation node and must be delivered only over authenticated SSH; never place them in the Caddy HTTP cache.
 - CFSSL binaries are pinned by exact version and SHA256. Certificate validity is verified from issued NotAfter, not assumed from requested duration.
 - Root CA private keys must be backed up offline; external backup is not automated.
 - SELinux remains enabled unless explicitly configured otherwise; that choice is security-sensitive.

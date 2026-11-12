@@ -29,6 +29,23 @@ setup() {
   [ -s "$BATS_TEST_TMPDIR/pki/service-account/sa.key" ]
   [ -s "$BATS_TEST_TMPDIR/pki/service-account/sa.pub" ]
   [ "$(stat -c '%a' "$BATS_TEST_TMPDIR/pki/service-account/sa.key")" = 600 ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/apiserver/apiserver.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/admin/admin.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/kubelet/master-1/master-1-serving.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/kubelet/worker-1/worker-1-client.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/etcd/members/master-1/server.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/etcd/members/master-1/peer.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/front-proxy/client/front-proxy-client.pem" ]
+  [ "$(stat -c '%a' "$BATS_TEST_TMPDIR/pki/kubernetes/apiserver/apiserver-key.pem")" = 600 ]
+  run openssl x509 -in "$BATS_TEST_TMPDIR/pki/kubernetes/apiserver/apiserver.pem" -noout -text
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"IP Address:10.96.0.1"* ]]
+  [[ "$output" == *"IP Address:192.0.2.11"* ]]
+  [[ "$output" == *"DNS:kubernetes.default.svc.cluster.local"* ]]
+  run openssl x509 -in "$BATS_TEST_TMPDIR/pki/kubernetes/kubelet/master-1/master-1-client.pem" -noout -subject
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"CN = system:node:master-1"* ]]
+  [[ "$output" == *"O = system:nodes"* ]]
 }
 @test "PKI apply refuses to overwrite existing content" {
   mkdir -p "$BATS_TEST_TMPDIR/existing-pki"

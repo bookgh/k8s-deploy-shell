@@ -68,3 +68,10 @@ setup() {
   run ks_cidr_overlaps 10.96.0.0/12 10.96.0.0/16
   [ "$status" -eq 0 ]
 }
+
+@test "Kubernetes API service IP outside Service CIDR is rejected" {
+  sed -i 's#KUBERNETES_SERVICE_IP=10.96.0.1#KUBERNETES_SERVICE_IP=10.97.0.1#' "$TMP"
+  ks_config_load "$TMP"
+  run ks_config_validate
+  [ "$status" -ne 0 ]
+}
