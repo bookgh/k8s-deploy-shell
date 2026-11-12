@@ -32,8 +32,8 @@ ks_nodes_validate() {
     [[ $role == master || $role == worker ]] || return 2
     [[ ${expected[$node]:-} == "$role" ]] || { ks_log ERROR "Unexpected node or role mismatch: $node/$role"; return 2; }
     [[ -z ${seen_nodes[$node]:-} ]] || { ks_log ERROR "Duplicate node ID: $node"; return 2; }
-    [[ -z ${seen_ips[$address]:-} ]] || { ks_log ERROR "Duplicate node address: $address"; return 2; }
     ks_ipv4_to_int "$address" || { ks_log ERROR "Invalid IPv4 address for $node: $address"; return 2; }
+    [[ -z ${seen_ips[$address]:-} ]] || { ks_log ERROR "Duplicate node address: $address"; return 2; }
     [[ $user =~ ^[a-z_][a-zA-Z0-9_-]*[$]?$ ]] || return 2
     [[ $port =~ ^[0-9]{1,5}$ ]] && ((10#$port > 0 && 10#$port < 65536)) || return 2
     seen_nodes[$node]=1; seen_ips[$address]=1
