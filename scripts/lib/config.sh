@@ -58,7 +58,7 @@ ks_config_load() {
     printf -v "$key" '%s' "$value"
     export "$key=$value"
   done < "$file"
-  if [[ ${KS_DRY_RUN_OVERRIDE:-false} != true ]]; then KS_DRY_RUN=$DRY_RUN; fi
+  if [[ ${KS_DRY_RUN_OVERRIDE:-false} != true ]]; then export KS_DRY_RUN=$DRY_RUN; fi
 }
 ks_config_validate() {
   local key node
