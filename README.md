@@ -23,11 +23,13 @@
 
 ## 初始化
 
-    cp cluster.env.example cluster.env
-    bin/install.sh --config cluster.env validate
-    bin/install.sh --config cluster.env plan
+```bash
+cp cluster.env.example cluster.env
+bin/install.sh --config cluster.env validate
+bin/install.sh --config cluster.env plan
+```
 
-填写节点地址、SSH HostKey、网络、版本和 artifact manifest 后，再按计划执行。cluster.env.example 是示例，不是可直接用于生产的配置。charts.yaml 中的空版本必须在安装前锁定。
+示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。cluster.env.example 是示例，不是可直接用于生产的配置。charts.yaml 中的空版本必须在安装前锁定。
 
 ## 目录
 
@@ -39,4 +41,4 @@ bin/ 为 CLI；scripts/lib/ 为 Bash 公共库；scripts/ 为步骤入口；conf
 
 ## 状态
 
-当前提交包含基础工程骨架和部分本地工具，不代表 Kubernetes 集群部署功能已经完成。请以 docs/IMPLEMENTATION-STATUS.md 为准。未经过 Rocky Linux 9 真实目标环境和故障恢复演练前，不得用于生产。
+当前提交包含基础工程骨架、配置校验、制品清单校验和部分预览入口，不代表 Kubernetes 集群部署功能已经完成。请以 docs/IMPLEMENTATION-STATUS.md 为准。未经过 Rocky Linux 9 真实目标环境和故障恢复演练前，不得用于生产。

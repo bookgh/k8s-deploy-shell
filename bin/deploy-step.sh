@@ -9,7 +9,7 @@ STEP=
 while (($#)); do
   case $1 in
     --config) CONFIG=$2; shift 2 ;;
-    --dry-run) KS_DRY_RUN=true; shift ;;
+    --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
     *) [[ -z $STEP ]] || { echo 'Only one step accepted' >&2; exit 2; }; STEP=$1; shift ;;
   esac
 done

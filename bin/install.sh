@@ -5,11 +5,12 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
 source "$ROOT/scripts/lib/manifest.sh"
-usage() { printf 'Usage: bin/install.sh [--config FILE] COMMAND\nCommands: validate preflight plan prepare status\n'; }
+usage() { printf 'Usage: bin/install.sh [--config FILE] [--dry-run] COMMAND\nCommands: validate preflight plan prepare status\n'; }
 CONFIG="$ROOT/cluster.env"; COMMAND=
 while (($#)); do
   case $1 in
     --config) (($# >= 2)) || { usage >&2; exit 2; }; CONFIG=$2; shift 2 ;;
+    --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
     --help|-h) usage; exit 0 ;;
     validate|preflight|plan|prepare|status) [[ -z $COMMAND ]] || { usage >&2; exit 2; }; COMMAND=$1; shift ;;
     *) usage >&2; exit 2 ;;
@@ -28,7 +29,7 @@ case $COMMAND in
     ;;
   plan)
     load_config
-    printf 'Cluster: %s\nMasters: %s\nWorkers: %s\nEtcd: %s\nRuntime: %s\nProxy: %s\nImage mode: %s\n' "$CLUSTER_NAME" "$MASTERS" "$WORKERS" "$ETCD_NODES" "$RUNTIME" "$KUBE_PROXY_MODE" "$IMAGE_MODE"
+    printf 'Cluster: %s\nMasters: %s\nWorkers: %s\nEtcd: %s\nRuntime: %s\nProxy: %s\nImage mode: %s\nDry-run: %s\n' "$CLUSTER_NAME" "$MASTERS" "$WORKERS" "$ETCD_NODES" "$RUNTIME" "$KUBE_PROXY_MODE" "$IMAGE_MODE" "$KS_DRY_RUN"
     printf 'Order: preflight -> system-init -> PKI -> etcd -> runtime -> control-plane -> worker-proxy -> kubelet/proxy -> addons -> verify\n'
     printf 'Read-only plan; no cluster changes performed.\n'
     ;;
@@ -37,5 +38,5 @@ case $COMMAND in
     [[ -f $ROOT/artifacts/manifest.tsv ]] || { ks_log ERROR 'Missing artifacts/manifest.tsv'; exit 2; }
     ks_manifest_fetch "$ROOT/artifacts/manifest.tsv" "$ROOT/artifacts/cache"
     ;;
-  status) printf 'Project root: %s\nConfig: %s\n' "$ROOT" "$CONFIG" ;;
+  status) printf 'Project root: %s\nConfig: %s\nDry-run: %s\n' "$ROOT" "$CONFIG" "$KS_DRY_RUN" ;;
 esac

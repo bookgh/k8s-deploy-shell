@@ -10,13 +10,13 @@ while (($#)); do
   case $1 in
     --config) CONFIG=$2; shift 2 ;;
     --apply) APPLY=true; shift ;;
-    --dry-run) KS_DRY_RUN=true; shift ;;
+    --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 ks_config_load "$CONFIG"
 ks_config_validate
-if [[ $APPLY != true ]]; then
+if [[ $APPLY != true || ${KS_DRY_RUN:-true} == true ]]; then
   ks_log INFO 'Preview only; no host settings changed'
   printf 'Would inspect Rocky Linux 9, x86_64, SELinux, kernel modules, sysctl, chronyd and firewall policy.\n'
   printf 'SELinux disable explicitly configured: %s\n' "$DISABLE_SELINUX"
