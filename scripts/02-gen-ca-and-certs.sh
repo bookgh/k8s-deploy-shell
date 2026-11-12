@@ -157,8 +157,8 @@ ks_generate_leaf_certs() {
   ks_issue_cert "$cfssl" "$cfssljson" "$stage/kubernetes" "$stage/kubernetes/admin" admin kubernetes-admin system:masters client ""
   ks_issue_cert "$cfssl" "$cfssljson" "$stage/kubernetes" "$stage/kubernetes/kube-proxy" kube-proxy system:kube-proxy system:node-proxier client ""
   ks_issue_cert "$cfssl" "$cfssljson" "$stage/front-proxy" "$stage/front-proxy/client" front-proxy-client front-proxy-client system:masters client ""
-  ks_issue_cert "$cfssl" "$cfssljson" "$stage/etcd" "$stage/etcd/clients/apiserver-etcd-client" apiserver-etcd-client kube-apiserver-etcd-client system:masters client ""
-  ks_issue_cert "$cfssl" "$cfssljson" "$stage/etcd" "$stage/etcd/clients/healthcheck-client" healthcheck-client etcd-healthcheck-client system:masters client ""
+  ks_issue_cert "$cfssl" "$cfssljson" "$stage/etcd" "$stage/etcd/clients" apiserver-etcd-client kube-apiserver-etcd-client system:masters client ""
+  ks_issue_cert "$cfssl" "$cfssljson" "$stage/etcd" "$stage/etcd/clients" healthcheck-client etcd-healthcheck-client system:masters client ""
   while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
     [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
     ks_issue_cert "$cfssl" "$cfssljson" "$stage/kubernetes" "$stage/kubernetes/kubelet/$node" "$node-client" "system:node:$node" system:nodes client ""
