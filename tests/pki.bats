@@ -7,6 +7,7 @@ setup() {
 @test "PKI dry-run creates no keys or directories" {
   sed -i "s#PKI_ROOT=./pki#PKI_ROOT=$BATS_TEST_TMPDIR/pki#" "$TMP_CONFIG"
   run "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$TMP_CONFIG"
+  if [ "$status" -ne 0 ]; then printf "%s\\n" "$output" >&3; fi
   [ "$status" -eq 0 ]
   [ ! -e "$BATS_TEST_TMPDIR/pki" ]
 }
@@ -15,6 +16,7 @@ setup() {
   [ -s /var/lib/k8s-deploy-shell/artifacts/cache/cfssljson_1.7.1_linux_amd64 ]
   sed -i "s#PKI_ROOT=./pki#PKI_ROOT=$BATS_TEST_TMPDIR/pki#; s#DRY_RUN=true#DRY_RUN=false#" "$TMP_CONFIG"
   run "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$TMP_CONFIG" --apply
+  if [ "$status" -ne 0 ]; then printf "%s\\n" "$output" >&3; fi
   [ "$status" -eq 0 ]
   for name in kubernetes etcd front-proxy; do
     [ -s "$BATS_TEST_TMPDIR/pki/$name/ca.pem" ]
