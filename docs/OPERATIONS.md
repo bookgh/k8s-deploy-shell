@@ -3,7 +3,7 @@
 ## Initial setup
 
 1. Copy `cluster.env.example` to `cluster.env` and replace every example value.
-2. Populate the node inventory and provision SSH host keys out of band.
+2. Copy `config/nodes.tsv.example` to `config/nodes.tsv`, set every node address/SSH user/port, and update `NODE_INVENTORY_FILE` in `cluster.env`. Provision SSH host keys out of band.
 3. Configure a dedicated known_hosts file; strict checking is mandatory.
 4. Populate `artifacts/manifest.tsv` with immutable HTTPS URLs and independently verified SHA256 values.
 5. Pin component and Helm chart versions after compatibility and image-closure validation.
@@ -24,6 +24,8 @@ bin/deploy-step.sh --config cluster.env --dry-run pki
 `DRY_RUN=true` is the example default and is propagated into artifact preparation and step entrypoints. The CLI `--dry-run` flag forces preview mode even if the configuration says otherwise. Dry-run must not create cache directories, lock files, temporary files, keys, or change host state.
 
 `prepare` is the online artifact-fetch phase. It requires a complete manifest and only accepts HTTPS sources with SHA256 verification. Set `DRY_RUN=false` in `cluster.env` deliberately to download artifacts. Then run `scripts/00-prepare-install-node.sh --config cluster.env verify-cache` and review the Caddy preview. Caddy installation additionally requires `DRY_RUN=false` and explicit `--apply`. This does not authorize deploying or connecting to cluster nodes.
+
+`--check-ssh` is a read-only target check for SSH HostKey, remote OS release and architecture. It only performs SSH when `DRY_RUN=false`; with the example default it prints the SSH plan. No remote system changes are made.
 
 System initialization and PKI are currently preview-only. Caddy deployment is guarded by an explicit apply flag and requires the installation node to be Rocky Linux 9 / x86_64. Their `--apply` paths fail closed until their full safety checks, rollback and Rocky Linux 9 integration tests are implemented. Do not bypass these guards.
 

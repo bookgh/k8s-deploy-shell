@@ -4,6 +4,7 @@ IFS=$'\n\t'
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
+source "$ROOT/scripts/lib/nodes.sh"
 CONFIG="$ROOT/cluster.env"
 STEP=
 while (($#)); do
@@ -16,6 +17,7 @@ done
 [[ -n $STEP ]] || { echo 'Missing step' >&2; exit 2; }
 ks_config_load "$CONFIG"
 ks_config_validate
+ks_nodes_validate "$NODE_INVENTORY_FILE" "$MASTERS" "$WORKERS"
 DRY_ARGS=()
 [[ ${KS_DRY_RUN:-false} == true ]] && DRY_ARGS+=(--dry-run)
 case $STEP in

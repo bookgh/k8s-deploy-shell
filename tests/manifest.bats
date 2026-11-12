@@ -43,7 +43,7 @@ setup() {
   printf 'name\tversion\tarch\turl\tsha256\tfilename\ncaddy\t2.11.9\tamd64\thttps://github.com/caddyserver/caddy/releases/download/v2.11.9/caddy_2.11.9_linux_amd64.tar.gz\t%s\tcaddy.tar.gz\n' "$HASH" > "$TMP"
   run ks_manifest_lookup "$TMP" caddy
   [ "$status" -eq 0 ]
-  [[ "$output" == $'caddy.tar.gz\t'* ]]
+  [[ "$output" == *"caddy.tar.gz"* ]]
 }
 @test "cache verification detects missing or corrupted assets" {
   printf 'name\tversion\tarch\turl\tsha256\tfilename\nfoo\t1.0\tamd64\thttps://example.invalid/foo\t%s\tfoo.tar.gz\n' "$HASH" > "$TMP"

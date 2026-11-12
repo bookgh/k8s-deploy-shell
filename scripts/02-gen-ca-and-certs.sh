@@ -4,6 +4,7 @@ IFS=$'\n\t'
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
+source "$ROOT/scripts/lib/nodes.sh"
 CONFIG="$ROOT/cluster.env"
 APPLY=false
 while (($#)); do
@@ -16,6 +17,7 @@ while (($#)); do
 done
 ks_config_load "$CONFIG"
 ks_config_validate
+ks_nodes_validate "$NODE_INVENTORY_FILE" "$MASTERS" "$WORKERS"
 PKI_ROOT=${PKI_ROOT:-$ROOT/pki}
 if [[ $APPLY != true || ${KS_DRY_RUN:-true} == true ]]; then
   ks_log INFO "Preview only; no key material created. PKI root: $PKI_ROOT"

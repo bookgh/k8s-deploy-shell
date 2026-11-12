@@ -5,6 +5,7 @@ ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
 source "$ROOT/scripts/lib/manifest.sh"
+source "$ROOT/scripts/lib/nodes.sh"
 usage() { printf 'Usage: bin/install.sh [--config FILE] [--dry-run] COMMAND\nCommands: validate preflight plan prepare status\n'; }
 CONFIG="$ROOT/cluster.env"; COMMAND=
 while (($#)); do
@@ -17,7 +18,7 @@ while (($#)); do
   esac
 done
 [[ -n $COMMAND ]] || { usage >&2; exit 2; }
-load_config() { ks_config_load "$CONFIG"; ks_config_validate; }
+load_config() { ks_config_load "$CONFIG"; ks_config_validate; ks_nodes_validate "$NODE_INVENTORY_FILE" "$MASTERS" "$WORKERS"; }
 case $COMMAND in
   validate) load_config; ks_log INFO "Configuration valid: $CONFIG" ;;
   preflight)

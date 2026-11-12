@@ -5,9 +5,9 @@ This record distinguishes implemented local tooling from component deployment th
 | Area | Status | Evidence / limitation |
 |---|---|---|
 | M0 repository skeleton | Partial | Layout, ignore rules, CI and tests exist; shfmt still reports formatting differences as a non-blocking warning |
-| M1 configuration/common library | Partial | Allowlisted non-executing parser; duplicate/unknown key rejection; IPv4 CIDR overlap and DNS membership checks; node role/etcd odd-membership validation; retry/lock/atomic-write/backup/SHA256 helpers; dry-run propagated to artifact preparation. Node IP inventory, complete schema and broader concurrency/failure tests remain |
+| M1 configuration/common library | Partial | Allowlisted non-executing parser; duplicate/unknown key rejection; IPv4 CIDR overlap and DNS membership checks; node role/etcd odd-membership validation; retry/lock/atomic-write/backup/SHA256 helpers; dry-run propagated to artifact preparation. Node IP/role/SSH inventory is now validated; full CIDR collision against node subnets, complete schema and broader concurrency/failure tests remain |
 | M2 artifacts/Caddy | Partial | HTTPS-only TSV manifest with immutable asset metadata, GitHub asset SHA256 for Caddy 2.11.9, cache verification, Rocky 9/amd64 preflight and guarded Caddy Systemd installer. No artifact has been downloaded or Caddy installed; RPM/Chart/image closure remains |
-| M3 system/SSH | Partial | Strict HostKey SSH wrapper and preview-only system-init entrypoint; no Rocky 9 apply workflow or target integration |
+| M3 system/SSH | Partial | Strict HostKey SSH wrapper, node inventory, remote Rocky 9/amd64 read-only check and preview-only system-init entrypoint; no Rocky 9 apply workflow or target integration |
 | M4 PKI | Partial | Safe preview entrypoint; actual CA and leaf certificate issuance, SAN profiles, rotation and recovery remain blocked |
 | M5 etcd | Not implemented | No member lifecycle, systemd deployment, mTLS rollout or snapshot restore |
 | M6 control plane | Not implemented | No component deployment, kubeconfig generation or HA validation |

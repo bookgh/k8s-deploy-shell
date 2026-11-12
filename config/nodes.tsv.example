@@ -1,0 +1,3 @@
+node_id	role	address	ssh_user	ssh_port
+master-1	master	192.0.2.11	root	22
+worker-1	worker	192.0.2.21	root	22
