@@ -16,7 +16,7 @@
 - Worker：containerd、kubelet、kube-proxy、Nginx stream 本地 API 代理、工作负载。
 - Harbor：可选镜像仓库。
 
-安装节点通过 SSH 发送远程命令；远端节点仅通过安装节点 Caddy 下载非敏感制品并校验 SHA256。Caddy 默认 TCP 2026，HTTP 根目录不得包含私钥、kubeconfig、token 或日志。Worker Nginx 仅做 TCP stream 转发，监听 loopback 127.0.0.1:6443，TLS 在 API Server 终止。不得假设开源 Nginx 默认支持主动健康检查。
+安装节点通过 SSH 发送远程命令；远端节点仅通过安装节点 Caddy 下载非敏感制品并校验 SHA256。敏感 PKI 文件通过严格 HostKey 验证的 SSH stdin 写入远端 mode-0600 临时文件，远端 SHA256 校验后原子 rename；禁止 SCP/SFTP/rsync。Caddy 默认 TCP 2026，HTTP 根目录不得包含私钥、kubeconfig、token 或日志。Worker Nginx 仅做 TCP stream 转发，监听 loopback 127.0.0.1:6443，TLS 在 API Server 终止。不得假设开源 Nginx 默认支持主动健康检查。
 
 ## 3. 配置单一事实源
 

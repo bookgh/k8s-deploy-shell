@@ -46,6 +46,10 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"CN = system:node:master-1"* ]]
   [[ "$output" == *"O = system:nodes"* ]]
+  run "$ROOT/scripts/03-distribute-pki.sh" --config "$TMP_CONFIG"
+  if [ "$status" -ne 0 ]; then printf "%s\n" "$output" >&3; fi
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PKI distribution preview"* ]]
 }
 @test "PKI apply refuses to overwrite existing content" {
   mkdir -p "$BATS_TEST_TMPDIR/existing-pki"

@@ -12,7 +12,7 @@
 - 禁止 kubeadm、k3s、RKE、Ansible、SaltStack 等替代本项目的部署编排。
 - GitHub Actions 仅构建、验证、打包和发布制品，不得连接集群或执行部署。
 - Kubernetes、etcd、运行时、CNI、工具、Chart、镜像版本必须精确锁定；版本只允许在权威配置中定义。
-- 部署期间禁止从公网下载制品；禁止 SCP/SFTP/rsync 或 SSH heredoc 逐台传输部署文件。
+- 部署期间禁止从公网下载制品；禁止 SCP/SFTP/rsync/SSH heredoc 逐台传输部署制品。敏感 PKI 文件仅允许通过严格 HostKey 验证的 SSH stdin 原始文件流传输（不是 heredoc），远端写入 mode-0600 临时文件、校验 SHA256 后原子 rename；Caddy 只提供非敏感制品。
 - Worker kubeconfig 的 API 地址必须为 `https://127.0.0.1:6443`，不得直连 Master IP。
 
 ## 2. Shell-only 强制约束

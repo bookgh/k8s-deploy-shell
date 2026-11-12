@@ -6,11 +6,13 @@ source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
 source "$ROOT/scripts/lib/nodes.sh"
 CONFIG="$ROOT/cluster.env"
+APPLY=false
 STEP=
 while (($#)); do
   case $1 in
     --config) CONFIG=$2; shift 2 ;;
     --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
+    --apply) APPLY=true; shift ;;
     *) [[ -z $STEP ]] || { echo 'Only one step accepted' >&2; exit 2; }; STEP=$1; shift ;;
   esac
 done
@@ -19,10 +21,13 @@ ks_config_load "$CONFIG"
 ks_config_validate
 ks_nodes_validate "$NODE_INVENTORY_FILE" "$MASTERS" "$WORKERS"
 DRY_ARGS=()
+APPLY_ARGS=()
 [[ ${KS_DRY_RUN:-false} == true ]] && DRY_ARGS+=(--dry-run)
+[[ $APPLY == true ]] && APPLY_ARGS+=(--apply)
 case $STEP in
-  init-system) exec "$ROOT/scripts/01-init-system.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
-  pki) exec "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
+  init-system) exec "$ROOT/scripts/01-init-system.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
+  pki) exec "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
+  distribute-pki) exec "$ROOT/scripts/03-distribute-pki.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
   verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
   etcd|runtime|control-plane|worker-proxy|kubelet-proxy|addons)
     ks_log ERROR "Stage '$STEP' is not implemented; refusing deployment"

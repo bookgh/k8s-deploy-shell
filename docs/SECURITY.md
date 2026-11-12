@@ -15,3 +15,6 @@
 - Firewall rules are not globally flushed or disabled.
 - Dry-run must avoid filesystem, network, lock and system side effects.
 - etcd restore, member changes, certificate rotation, upgrades and data deletion require separately reviewed and confirmed procedures.
+
+
+Sensitive leaf keys are sent only over strict-HostKey SSH stdin. The remote side writes a temporary file with mode 0600, checks SHA256, and atomically renames it; the containing PKI directory is mode 0700. SCP/SFTP/rsync and Caddy HTTP are not used for private material. Root CA keys and the admin private key remain local.

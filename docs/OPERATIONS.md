@@ -32,3 +32,14 @@ System initialization remains preview-only. PKI `--apply` generates three indepe
 ## Honest status
 
 A successful config validation or plan is not evidence of a deployed cluster. Component stages without complete implementation must fail closed. See `docs/IMPLEMENTATION-STATUS.md`.
+
+
+### PKI credential delivery
+
+The default `distribute-pki` command is preview-only. For a real transfer, provision `config/known_hosts` out of band, set `DRY_RUN=false`, then run:
+
+```bash
+bin/deploy-step.sh --config cluster.env --apply distribute-pki
+```
+
+Private keys are streamed through authenticated SSH stdin to a mode-0600 temporary file, checked remotely by SHA256, and atomically renamed. Remote PKI directories are mode 0700. SCP/SFTP/rsync and the Caddy artifact server are not used for sensitive files. Root CA private keys and the admin credential stay on the installation node.
