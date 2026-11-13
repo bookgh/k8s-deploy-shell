@@ -31,7 +31,7 @@ bin/install.sh --config cluster.env plan
 
 `CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元；Worker Nginx stream 代理部署入口已实现，kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元，以及 Worker Nginx stream loopback TCP 代理部署入口；kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
 
 ## etcd M5 使用顺序
 
@@ -59,7 +59,7 @@ bin/deploy-step.sh --config cluster.env --dry-run control-plane
 bin/deploy-step.sh --config cluster.env --dry-run runtime
 ```
 
-实际执行前必须人工确认配置并设置 `DRY_RUN=false`。M6 控制平面部署要求 etcd 健康且 PKI 已安全分发；M7 runtime 当前只部署 containerd CRI 和 CNI 基础插件，不会启动 kubelet/kube-proxy，也不会安装 Worker 本地 API Nginx 代理。M7 的完整状态和限制见 `docs/IMPLEMENTATION-STATUS.md`。
+实际执行前必须人工确认配置并设置 `DRY_RUN=false`。M6 控制平面部署要求 etcd 健康且 PKI 已安全分发；M7 runtime 部署 containerd CRI 和 CNI 基础插件，kubelet/kube-proxy 步骤仅安装二进制、凭据和禁用状态单元；Worker Nginx stream 代理由独立步骤部署。服务激活仍受 M8 Addons 与显式验收门禁控制。
 
 当前 M7 可预览的节点组件准备命令：
 
@@ -76,7 +76,7 @@ Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官�
 
 ## M8 插件组件（部分完成）
 
-Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.37 tested, stable `crd.projectcalico.org.v1` CRDs and pinned operator/node/CNI/typha image set), CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
+`charts.yaml` 锁定 Calico/Tigera 3.33.0（稳定版 `crd.projectcalico.org.v1` CRD 及 operator/node/CNI/Typha 镜像）、CoreDNS Chart 1.48.2 和适配 Kubernetes v1.37.2 的本地 NodeLocal DNSCache Chart。Helm 固定为 v3.22.1。M8 当前仅支持 `IMAGE_MODE=local-import`。执行前从 `images.lock.tsv.example` 创建 `images.lock.tsv`，填入 Chart 渲染和 operator 动态生成的完整镜像集合、OCI digest 及 SHA256 校验归档，并放入 Caddy 缓存。镜像锁不完整或缺失时脚本会拒绝 apply。预览命令：`bin/deploy-step.sh --config cluster.env --dry-run addons`。
 
 
 ## 验收、清理、升级与离线打包
