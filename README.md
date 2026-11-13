@@ -46,6 +46,17 @@ bin/deploy-step.sh --config cluster.env --dry-run etcd
 
 真实部署必须先完成节点/HostKey/PKI 检查，并显式设置 `DRY_RUN=false`、传入 `--apply`。不得在已有 etcd 数据目录上运行新集群初始化。
 
+恢复前置文件检查（只读，不会恢复或连接节点）：
+
+```bash
+scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \\
+  --snapshot /secure/backup/cluster.db \\
+  --manifest /secure/backup/restore.manifest
+```
+
+该命令只验证本地 snapshot 与 TSV manifest 的 SHA256、文件大小、集群/版本/成员拓扑和字段格式。项目尚未提供 manifest 自动生成或受保护的 etcd restore 命令；执行该预检不代表恢复准备完成。
+
+
 ## 安全与状态
 
 默认保留 SELinux Enforcing，不全局关闭防火墙、不 flush 规则。已有 PKI/etcd/业务数据不得覆盖或删除。私钥不进入 Git 或 HTTP 根目录。真实 Rocky Linux 9 集群验证、etcd quorum 和快照恢复尚未完成；请以 docs/IMPLEMENTATION-STATUS.md 为准。
