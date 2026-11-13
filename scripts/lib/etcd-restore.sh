@@ -47,13 +47,13 @@ ks_etcd_restore_manifest_validate() {
     fields[$key]=$value
   done < "$manifest"
 
-  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size snapshot_file_size cluster_id members created_at_utc; do
     [[ -v fields[$required] ]] || {
       ks_log ERROR "Missing restore manifest field: $required"
       return 2
     }
   done
-  (( ${#fields[@]} == 11 )) || {
+  (( ${#fields[@]} == 12 )) || {
     ks_log ERROR 'Restore manifest contains unknown fields'
     return 2
   }
@@ -76,6 +76,7 @@ ks_etcd_restore_manifest_validate() {
   [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
   [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
   [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_file_size]} =~ ^[1-9][0-9]*$ ]] || return 2
   [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
   [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
 
@@ -85,7 +86,7 @@ ks_etcd_restore_manifest_validate() {
     return 1
   }
   actual_size=$(stat -c '%s' -- "$snapshot") || return 2
-  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+  [[ $actual_size == "${fields[snapshot_file_size]}" ]] || {
     ks_log ERROR 'Snapshot file size does not match restore manifest'
     return 1
   }
