@@ -11,7 +11,7 @@ This record distinguishes implemented local tooling from component deployment th
 | M4 PKI | Partial | Three independent root CAs, ServiceAccount keypair, API/control-plane/kubelet/etcd/front-proxy leaf certificates, SAN/EKU/key/validity checks; rotation/recovery and real-node distribution not validated |
 | M5 etcd | Partial | Pinned etcd 3.7.3 binary, mTLS Systemd bootstrap, dedicated etcd identity, existing-data fail-closed guard, health/member-list/snapshot commands and Bats coverage; real Rocky 9 multi-member quorum, snapshot restore and failure recovery remain NOT VERIFIED |
 | M6 control plane | Partial | API Server/controller-manager/scheduler remote installation, generated admin/controller/scheduler kubeconfigs, systemd units and flag-validation workflow exist; HA control-plane rollout and live API/etcd integration remain NOT VERIFIED |
-| M7 runtime/kubelet/proxy | Partial | Pinned containerd/runc/CNI CRI deployment plus kubelet and kube-proxy binaries, per-node client kubeconfigs, secure configs and disabled systemd units. Worker Nginx stream proxy and coordinated service activation remain not implemented |
+| M7 runtime/kubelet/proxy | Partial | Containerd/runc/CNI CRI, kubelet/kube-proxy binaries and disabled units, plus Rocky 9-built Nginx stream proxy on Workers with loopback-only TCP passthrough. Coordinated kubelet/kube-proxy activation is deferred until M8 add-ons are installed |
 | M8 Harbor/Addons | Not implemented | Chart versions and image closure are unpinned |
 | M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; full live checks and safe cleanup remain |
 | M10 upgrade/recovery | Not implemented | No upgrade/rollback workflow |

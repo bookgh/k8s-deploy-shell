@@ -65,3 +65,7 @@ etcd 成员变更不清空数据；快照可恢复。API Server TLS/RBAC/Node au
 | M9–M11 | Not implemented: end-to-end acceptance, upgrade/recovery and release packaging remain |
 
 A milestone is not complete merely because scripts exist. Each stage must pass static checks, unit tests, idempotence/dry-run checks, failure-path tests and Rocky Linux 9 integration tests before its status is changed to complete.
+
+## M7 progress note — 2026-11-13
+
+The current M7 implementation includes kubelet/kube-proxy credentials and disabled units, a pinned Nginx source build, and a Worker-only loopback stream proxy deployment path. Node-service activation remains gated until M8 add-ons have been installed. M7 is still partial until Rocky Linux 9 target integration, failover behavior, TLS pass-through, service recovery and end-to-end cluster checks pass.

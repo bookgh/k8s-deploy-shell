@@ -94,3 +94,22 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 The apply path requires `DRY_RUN=false`, a verified local `kubectl`, the pinned kubelet/kube-proxy artifacts in the Caddy cache, and node certificates already distributed by `distribute-pki`. Kubelet identities are checked against `system:node:<node>` / `system:nodes`; kube-proxy uses `system:kube-proxy` / `system:node-proxier`. Generated kubeconfigs embed client credentials and are transferred only over the verified SSH channel, never through the public artifact HTTP root.
 
 Both kubeconfigs point to `https://127.0.0.1:<CONTROL_PLANE_PORT>`. On Workers this endpoint is intentionally unusable until the local Nginx stream proxy is deployed. The stage installs binaries and disabled systemd units but does not enable or start kubelet/kube-proxy. Do not start these services until the Worker proxy and node-service activation stages are complete.
+
+## Nginx Worker API proxy (M7 partial)
+
+Build the stream-only Nginx binary on the Rocky Linux 9 x86_64 installation node from the pinned official source archive:
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run build-nginx
+```
+
+After reviewing the plan, set `DRY_RUN=false` in `cluster.env` and run `bin/deploy-step.sh --config cluster.env --apply build-nginx`. The generated archive and its SHA256/source provenance are recorded in the local-only `state/generated-artifacts.tsv`.
+
+Then deploy the proxy to Workers:
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run worker-proxy
+bin/deploy-step.sh --config cluster.env --apply worker-proxy
+```
+
+The Worker listener is restricted to `127.0.0.1:<CONTROL_PLANE_PORT>`; Nginx uses stream TCP passthrough, so API-server TLS remains end-to-end. Upstreams are the configured Master IPs. Open-source Nginx provides passive connection-failure handling here; no active health-check directive is assumed. The service is enabled and started by this stage, but kubelet/kube-proxy remain disabled until the M8 add-on stage and explicit node activation.

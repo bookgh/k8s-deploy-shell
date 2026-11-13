@@ -68,3 +68,7 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 ```
 
 该步骤不会启动 kubelet/kube-proxy；必须等 Worker 本地 API stream 代理部署完成后再激活。
+
+### M7 Worker API proxy
+
+The Nginx stream binary is built from a SHA256-pinned official source archive on Rocky Linux 9 x86_64. Worker proxy listeners bind only to `127.0.0.1:<CONTROL_PLANE_PORT>` and pass TCP through to configured Masters; API TLS is not terminated by Nginx. Active health checks are not claimed.
