@@ -9,7 +9,10 @@ API_PORT=$9; MASTER_ADDRS=${10}; WORKER_CONNECTIONS=${11}; CONNECT_TIMEOUT=${12}
 PROXY_TIMEOUT=${13}; MAX_FAILS=${14}; FAIL_TIMEOUT=${15}; NEXT_TRIES=${16}
 NEXT_TIMEOUT=${17}; NODE_NAME=${18}
 if [[ $EUID -ne 0 ]]; then command -v sudo >/dev/null 2>&1 || { echo 'sudo is required for non-root SSH users' >&2; exit 127; }; exec sudo -n bash "$0" "$@"; fi
-for cmd in curl sha256sum tar install systemctl cmp mktemp rm awk grep stat sed tr id useradd ss ldd; do
+install -d -o root -g root -m 0755 /run/lock
+exec 9>/run/lock/ks-deploy-shell-worker-proxy.lock
+flock -n 9 || { echo 'Another Worker API proxy operation is already running on this node' >&2; exit 75; }
+for cmd in curl sha256sum tar install systemctl cmp mktemp rm awk grep stat sed tr id useradd ss ldd flock; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }
 done
 [[ -r /etc/os-release ]] || exit 2
