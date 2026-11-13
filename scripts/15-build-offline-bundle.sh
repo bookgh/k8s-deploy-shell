@@ -39,7 +39,7 @@ if [[ $APPLY != true || ${KS_DRY_RUN:-true} == true ]]; then
   exit 0
 fi
 [[ ${KS_DRY_RUN:-true} == false ]] || { ks_log ERROR 'Set DRY_RUN=false before --apply'; exit 2; }
-for cmd in tar gzip sha256sum cp install find realpath; do ks_require_cmd "$cmd"; done
+for cmd in tar gzip sha256sum cp install find realpath date; do ks_require_cmd "$cmd"; done
 ks_manifest_verify_cache "$ROOT/artifacts/manifest.tsv" "$CACHE_ROOT"
 ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"
 if find "$CACHE_ROOT" -type l -print -quit | grep -q .; then ks_log ERROR 'Artifact cache contains symlinks'; exit 2; fi
@@ -48,6 +48,10 @@ if find "$CACHE_ROOT" -type f \( -name '*.key' -o -name '*.pem' -o -name '*.crt'
   exit 2
 fi
 STAMP=$(date -u '+%Y%m%dT%H%M%SZ')
+SOURCE_HEAD=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
+SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || printf 0)}
+[[ $SOURCE_DATE_EPOCH =~ ^[0-9]+$ ]] || { ks_log ERROR 'SOURCE_DATE_EPOCH must be a non-negative integer'; exit 2; }
+SOURCE_DATE_UTC=$(date -u -d "@$SOURCE_DATE_EPOCH" '+%Y-%m-%dT%H:%M:%SZ')
 RELEASE_DIR=$OUTPUT_PATH/releases
 install -d -m 0700 "$RELEASE_DIR"
 WORK=$(mktemp -d "$OUTPUT_PATH/.bundle.XXXXXX")
@@ -68,12 +72,13 @@ cat > "$STAGE/BUNDLE-METADATA.txt" <<META
 project=ks-deploy-shell
 cluster_target=Rocky Linux 9 x86_64
 kubernetes_target=$(ks_yaml_scalar "$ROOT/versions.yaml" kubernetes version)
-created_utc=$STAMP
-source_head=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || printf unknown)
+source_date_utc=$SOURCE_DATE_UTC
+source_date_epoch=$SOURCE_DATE_EPOCH
+source_head=$SOURCE_HEAD
 META
 BUNDLE=$RELEASE_DIR/ks-deploy-shell-$STAMP.tar.gz
 TMP_BUNDLE=$WORK/bundle.tar.gz
-tar -cf - --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -C "$WORK" ks-deploy-shell | gzip -n > "$TMP_BUNDLE"
+tar -cf - --sort=name --mtime="@$SOURCE_DATE_EPOCH" --owner=0 --group=0 --numeric-owner -C "$WORK" ks-deploy-shell | gzip -n > "$TMP_BUNDLE"
 mv -- "$TMP_BUNDLE" "$BUNDLE"
 chmod 0600 "$BUNDLE"
 (cd "$RELEASE_DIR" && sha256sum "$(basename "$BUNDLE")" > "$(basename "$BUNDLE").sha256")

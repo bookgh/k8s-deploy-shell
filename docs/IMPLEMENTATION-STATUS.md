@@ -15,7 +15,7 @@ This record distinguishes implemented local tooling from component deployment th
 | M8 Harbor/Addons | Partial | Calico 3.33.0 (Kubernetes 1.37 tested; stable crd.projectcalico.org.v1 CRD chart and pinned operator/node/CNI/typha images), CoreDNS 1.48.2 and a Kubernetes v1.37.2-derived NodeLocal DNSCache chart are pinned; Helm 3.22.1 and an image-lock/import path exist. Apply is fail-closed until the full rendered/operator image closure and archive lock are populated and Rocky 9 integration is validated. Harbor and online image modes remain blocked |
 | M9 verification/cleanup | Partial | Read-only live checks write text+JSON reports; explicit --e2e creates temporary cross-node BusyBox pods to test Pod IP, DNS, ClusterIP, Service DNS and NodePort. Cleanup is stop-only; data deletion is blocked |
 | M10 upgrade/recovery | Partial | One-minor-step upgrade planner and downgrade guard exist; apply remains blocked pending etcd restore, HA rolling-upgrade and Rocky 9 integration tests |
-| M11 release | Partial | Sanitized offline bundle builder and verifier exist; apply requires a complete image lock and verified artifact cache. No GitHub Release is created automatically |
+| M11 release | Partial | Reproducible sanitized offline bundle builder and verifier exist; apply requires a complete image lock and verified artifact cache. No GitHub Release is created automatically |
 
 ## Verification record
 

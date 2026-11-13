@@ -14,7 +14,7 @@ for cmd in sha256sum tar awk grep find mktemp; do ks_require_cmd "$cmd"; done
 EXPECTED=$(awk 'NR==1 {print $1}' "$SIDECAR")
 [[ $EXPECTED =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Invalid bundle SHA256 sidecar'; exit 2; }
 ACTUAL=$(ks_sha256_file "$BUNDLE")
-[[ ${ACTUAL,,} == ${EXPECTED,,} ]] || { ks_log ERROR 'Bundle SHA256 mismatch'; exit 1; }
+[[ "${ACTUAL,,}" == "${EXPECTED,,}" ]] || { ks_log ERROR 'Bundle SHA256 mismatch'; exit 1; }
 WORK=$(mktemp -d)
 trap 'rm -rf -- "$WORK"' EXIT
 tar -tzf "$BUNDLE" > "$WORK/entries.txt"
