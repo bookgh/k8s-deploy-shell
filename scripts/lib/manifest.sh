@@ -39,6 +39,7 @@ ks_manifest_fetch() {
     done < "$manifest"
     return 0
   fi
+  [[ ! -L $root ]] || { ks_log ERROR "Refusing symlink artifact cache root: $root"; return 2; }
   mkdir -p -- "$root"
   while IFS= read -r line || [[ -n $line ]]; do
     [[ -z $line || $line == \\#* || $line == $'name\tversion\tarch\turl\tsha256\tfilename' ]] && continue
