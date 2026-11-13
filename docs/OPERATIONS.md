@@ -92,7 +92,7 @@ containerd Runtime 和 PKI 分发完成后，可准备 kubelet、kube-proxy 二�
 bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 ```
 
-实际执行要求 `DRY_RUN=false)、本地 `kubectl` 已校验、Caddy 缓存中存在锁定版本的 kubelet/kube-proxy 制品，并且节点证书已通过 `distribute-pki` 分发。kubelet 身份必须匹配 `system:node:<node>` / `system:nodes`；kube-proxy 身份必须匹配 `system:kube-proxy` / `system:node-proxier`。生成的 kubeconfig 内嵌客户端凭据，只能通过已验证的 SSH 通道传输，不能放入公开制品 HTTP 根目录。
+实际执行要求 `DRY_RUN=false`，本地 `kubectl` 已校验、Caddy 缓存中存在锁定版本的 kubelet/kube-proxy 制品，并且节点证书已通过 `distribute-pki` 分发。kubelet 身份必须匹配 `system:node:<node>` / `system:nodes`；kube-proxy 身份必须匹配 `system:kube-proxy` / `system:node-proxier`。生成的 kubeconfig 内嵌客户端凭据，只能通过已验证的 SSH 通道传输，不能放入公开制品 HTTP 根目录。
 
 两个 kubeconfig 的 API 地址均为 `https://127.0.0.1:<CONTROL_PLANE_PORT>`。Worker 在本地 Nginx stream 代理部署前无法使用该地址。此阶段只安装二进制和处于 disabled 状态的 Systemd 单元，不会 enable 或 start kubelet/kube-proxy。Worker 代理和节点服务激活阶段完成前，不得启动这两个服务。
 
