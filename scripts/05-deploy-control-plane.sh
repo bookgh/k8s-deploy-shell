@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154 # ks_manifest_get populates the named globals via printf -v.
 set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
