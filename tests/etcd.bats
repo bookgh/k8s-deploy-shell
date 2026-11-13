@@ -11,9 +11,8 @@ setup() {
   NODE_INVENTORY_FILE=$REPLY
 }
 @test "etcd cluster string maps configured members to peer addresses" {
-  run ks_etcd_cluster_string "$NODE_INVENTORY_FILE"
-  [ "$status" -eq 0 ]
-  [ "$output" = "master-1=https://192.0.2.11:2380" ]
+  ks_etcd_cluster_string "$NODE_INVENTORY_FILE"
+  [ "$REPLY" = "master-1=https://192.0.2.11:2380" ]
 }
 @test "etcd environment enables mTLS and localhost client access" {
   run ks_etcd_render_env master-1 192.0.2.11 master-1=https://192.0.2.11:2380

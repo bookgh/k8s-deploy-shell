@@ -130,7 +130,7 @@ while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
           ks_ssh_root "$address" "$user" "$port" groupadd --system etcd
         fi
         if ! ks_ssh_root "$address" "$user" "$port" id etcd; then
-          ks_ssh_root "$address" "$user" "$port" useradd --system --gid etcd --home-dir "$ETCD_DATA_DIR" --create-home --shell /sbin/nologin etcd
+          ks_ssh_root "$address" "$user" "$port" useradd --system --gid etcd --home-dir "$ETCD_DATA_DIR" --no-create-home --shell /sbin/nologin etcd
         fi
         ks_push_file "$address" "$user" "$port" "$PKI_PATH/etcd/ca.pem" "$ETCD_CONFIG_DIR/pki/ca.crt" 0644
         ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/members/$node/server.pem" "$PKI_PATH/etcd/members/$node/server-key.pem" "$ETCD_CONFIG_DIR/pki/server.crt" "$ETCD_CONFIG_DIR/pki/server.key"

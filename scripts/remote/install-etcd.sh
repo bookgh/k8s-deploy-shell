@@ -140,7 +140,7 @@ if systemctl is-active --quiet etcd.service; then echo 'etcd service active but 
 [[ $(stat -c '%a' "$ETCD_SERVER_KEY") == 600 && $(stat -c '%a' "$ETCD_PEER_KEY") == 600 && $(stat -c '%a' "$ETCD_CONFIG_DIR/pki/healthcheck-client.key") == 600 ]] || { echo 'etcd private key mode must be 0600' >&2; exit 2; }
 [[ $(stat -c '%a' "$ETCD_CONFIG_DIR/pki") == 750 ]] || { echo 'etcd PKI directory must be mode 0750' >&2; exit 2; }
 getent group etcd >/dev/null 2>&1 || groupadd --system etcd
-id etcd >/dev/null 2>&1 || useradd --system --gid etcd --home-dir "$ETCD_DATA_DIR" --create-home --shell /sbin/nologin etcd
+id etcd >/dev/null 2>&1 || useradd --system --gid etcd --home-dir "$ETCD_DATA_DIR" --no-create-home --shell /sbin/nologin etcd
 REMOTE_TMP=$(mktemp -d /var/tmp/ks-etcd.XXXXXX)
 cleanup() { rm -rf -- "$REMOTE_TMP"; }
 trap cleanup EXIT
