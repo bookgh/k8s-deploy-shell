@@ -99,3 +99,12 @@ setup() {
   run ks_manifest_fetch "$TMP" "$BATS_TEST_TMPDIR/cache-link"
   [ "$status" -ne 0 ]
 }
+
+@test "cache verification rejects a hard-linked artifact" {
+  printf 'name\tversion\tarch\turl\tsha256\tfilename\nfoo\t1.0\tamd64\thttps://example.invalid/foo\t%s\tfoo.tar.gz\n' "$HASH" > "$TMP"
+  mkdir -p "$BATS_TEST_TMPDIR/cache"
+  printf x > "$BATS_TEST_TMPDIR/outside-artifact"
+  ln "$BATS_TEST_TMPDIR/outside-artifact" "$BATS_TEST_TMPDIR/cache/foo.tar.gz"
+  run ks_manifest_verify_cache "$TMP" "$BATS_TEST_TMPDIR/cache"
+  [ "$status" -ne 0 ]
+}
