@@ -23,3 +23,9 @@ setup() {
   run grep -nE '(^|[[:space:]])(scp|sftp|rsync)([[:space:]]|$)' "$ROOT/scripts/05-deploy-control-plane.sh" "$ROOT/scripts/remote/install-control-plane.sh"
   [ "$status" -eq 1 ]
 }
+
+@test "remote control-plane installer serializes node mutations with flock" {
+  grep -Fq 'flock -n 9' "$ROOT/scripts/remote/install-control-plane.sh"
+  grep -Fq 'ks-deploy-shell-control-plane.lock' "$ROOT/scripts/remote/install-control-plane.sh"
+  grep -Fq 'flock;' "$ROOT/scripts/remote/install-control-plane.sh"
+}
