@@ -9,6 +9,7 @@ source "$ROOT/scripts/lib/nodes.sh"
 source "$ROOT/scripts/lib/ssh.sh"
 source "$ROOT/scripts/lib/report.sh"
 source "$ROOT/scripts/lib/addons.sh"
+source "$ROOT/scripts/lib/manifest.sh"
 CONFIG="$ROOT/cluster.env"
 REPORT_DIR=
 E2E=false
@@ -117,6 +118,9 @@ else
   done
   if [[ -f $ROOT/images.lock.tsv && ! -L $ROOT/images.lock.tsv ]]; then
     if ks_images_validate "$ROOT/images.lock.tsv"; then
+      SANDBOX_REPOSITORY=$(ks_yaml_scalar "$ROOT/versions.yaml" sandbox_image repository)
+      SANDBOX_TAG=$(ks_yaml_scalar "$ROOT/versions.yaml" sandbox_image tag)
+      ks_images_require_ref "$ROOT/images.lock.tsv" sandbox-pause "$SANDBOX_REPOSITORY:$SANDBOX_TAG"
       [[ $ARTIFACT_HTTP_ROOT == /* ]] || ARTIFACT_HTTP_ROOT=$ROOT/$ARTIFACT_HTTP_ROOT
       CACHE_ROOT=$(realpath -m -- "$ARTIFACT_HTTP_ROOT")
       if ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"; then

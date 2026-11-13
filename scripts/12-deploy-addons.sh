@@ -49,6 +49,7 @@ ks_images_require_ref "$ROOT/images.lock.tsv" calico-typha quay.io/calico/typha:
 ks_images_require_ref "$ROOT/images.lock.tsv" coredns registry.k8s.io/coredns/coredns:1.14.7
 ks_images_require_ref "$ROOT/images.lock.tsv" node-local-dns registry.k8s.io/dns/k8s-dns-node-cache:1.26.8
 ks_images_require_ref "$ROOT/images.lock.tsv" m9-test-busybox docker.io/library/busybox:1.37.0
+ks_images_require_ref "$ROOT/images.lock.tsv" sandbox-pause registry.k8s.io/pause:3.10.1
 ks_addon_artifact helm "$(ks_yaml_scalar "$ROOT/versions.yaml" helm version)" "https://get.helm.sh/helm-v3.22.1-linux-amd64.tar.gz"
 HELM_ARCHIVE=$REPLY; HELM_SHA=$KS_ADDON_SHA
 ks_addon_artifact calico-operator-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz"
@@ -183,7 +184,7 @@ YAML
 for rendered in "$RENDER_DIR/calico.yaml" "$RENDER_DIR/coredns.yaml" "$RENDER_DIR/nodelocaldns.yaml"; do
   awk '/^[[:space:]]*image:[[:space:]]*/ { sub(/^[[:space:]]*image:[[:space:]]*/, ""); gsub(/"/, ""); split($0, a, /[[:space:]]/); if (a[1] != "") print a[1] }' "$rendered"
 done | sort -u > "$RENDER_DIR/rendered-images.txt"
-printf '%s\n' quay.io/calico/calico:v3.33.0 quay.io/calico/node:v3.33.0 quay.io/calico/third-party-cni-plugins:v3.33.0 quay.io/calico/typha:v3.33.0 docker.io/library/busybox:1.37.0 >> "$RENDER_DIR/rendered-images.txt"
+printf '%s\n' quay.io/calico/calico:v3.33.0 quay.io/calico/node:v3.33.0 quay.io/calico/third-party-cni-plugins:v3.33.0 quay.io/calico/typha:v3.33.0 docker.io/library/busybox:1.37.0 registry.k8s.io/pause:3.10.1 >> "$RENDER_DIR/rendered-images.txt"
 sort -u -o "$RENDER_DIR/rendered-images.txt" "$RENDER_DIR/rendered-images.txt"
 while IFS= read -r rendered_image; do
   image_ref=${rendered_image%%@*}
