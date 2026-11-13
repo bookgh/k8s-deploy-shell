@@ -76,7 +76,8 @@ TMP_BUNDLE=$WORK/bundle.tar.gz
 tar -cf - --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -C "$WORK" ks-deploy-shell | gzip -n > "$TMP_BUNDLE"
 mv -- "$TMP_BUNDLE" "$BUNDLE"
 chmod 0600 "$BUNDLE"
-sha256sum "$BUNDLE" > "$BUNDLE.sha256"
+(cd "$RELEASE_DIR" && sha256sum "$(basename "$BUNDLE")" > "$(basename "$BUNDLE").sha256")
 chmod 0600 "$BUNDLE.sha256"
+"$ROOT/scripts/16-verify-offline-bundle.sh" "$BUNDLE"
 ks_log INFO "Offline bundle created: $BUNDLE"
 ks_log INFO "Bundle SHA256: $(ks_sha256_file "$BUNDLE")"
