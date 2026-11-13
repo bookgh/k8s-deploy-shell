@@ -11,7 +11,7 @@
 | M2 制品与 Caddy | 部分完成 | HTTPS TSV 清单；固定版本 Caddy 2.11.9、CFSSL 1.7.1、etcd 3.7.3 及 SHA256；具备缓存校验和受保护的 Caddy Systemd 安装入口；尚无真实 Rocky Linux 9 安装及完整 RPM/Chart/镜像依赖闭包。 |
 | M3 系统与 SSH | 部分完成 | 严格 Host Key SSH 包装器、节点清单、Rocky Linux 9/amd64 只读检查和 SSH stdin PKI 分发已实现；M12 正在补充 SSH 用户/端口/超时/重试参数边界及拒绝符号链接 known_hosts 的回归测试。系统初始化 apply 仍受角色防火墙/SELinux 集成测试门禁限制。 |
 | M4 PKI | 部分完成 | 三套独立根 CA、ServiceAccount 密钥对、API/控制面客户端/kubelet/etcd/front-proxy 叶证书及 SAN/EKU/密钥/有效期校验已实现；轮换、恢复和真实节点分发尚未验证。 |
-| M5 etcd | 部分完成 | 固定版本 etcd 3.7.3、mTLS Systemd bootstrap、专用 etcd 身份、已有数据 fail-closed 保护、健康/成员/快照保存命令及 Bats 测试已实现；当前没有受保护的快照恢复子命令，真实 Rocky Linux 9 多成员 quorum、隔离恢复演练和故障恢复均未完成。 |
+| M5 etcd | 部分完成 | 固定版本 etcd 3.7.3、mTLS Systemd bootstrap、专用 etcd 身份、已有数据 fail-closed 保护、健康/成员/快照保存命令及 Bats 测试已实现；当前没有受保护的快照恢复子命令；新增了只读恢复清单校验库和 Bats 回归用例，用于校验清单字段、快照 SHA256/文件大小、集群/版本/成员拓扑及输入文件类型，但尚未接入 CLI、生成恢复清单或执行 etcdutl 内部元数据比对。真实 Rocky Linux 9 多成员 quorum、隔离恢复演练和故障恢复均未完成。 |
 | M6 控制平面 | 部分完成 | API Server/controller-manager/scheduler 远程安装、admin/controller/scheduler kubeconfig、Systemd 单元和参数校验流程已实现；HA 控制面滚动部署及 API/etcd 实时集成未验证。 |
 | M7 Runtime/kubelet/代理 | 部分完成 | Containerd CRI、kubelet/kube-proxy 二进制和禁用状态单元已实现；Worker 已具备 Rocky Linux 9 构建的 Nginx stream 代理部署入口，目标监听 loopback 并进行 TCP 透传；实际节点运行和故障切换未验证。协调激活 kubelet/kube-proxy 仍延后到 M8 Addons 完成后。 |
 | M8 Harbor/Addons | 部分完成 | Calico 稳定 CRD/operator、CoreDNS 和 NodeLocal Chart 已锁定；Helm 3.22.1 已校验。导入前必须渲染 Chart，并将所有渲染镜像、operator 动态生成镜像（包括 sandbox pause 和 M9 BusyBox）与 OCI digest/归档锁逐项匹配。Calico/CoreDNS/NodeLocal 工作负载使用 `imagePullPolicy: Never`。真实 Rocky Linux 9 集成未验证；Harbor 和 online 镜像模式仍被阻断。 |
@@ -73,3 +73,12 @@ M12 本轮继续审查 M3–M7：SSH 包装器现在独立校验用户、端口�
 已修复为 Dry-run 只记录“将获取锁并执行的命令”，随后直接返回成功，不创建锁文件，也不调用回调。新增 tests/common.bats 两项回归测试，分别验证 Dry-run 不执行回调/不创建锁，以及正常模式仍会执行回调并创建锁文件。
 
 GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43390326016) 已成功：Bash Syntax、ShellCheck、shfmt 报告、CFSSL、Helm/Chart 校验、**89 项 Bats 测试**及 Shell-only 门禁全部通过。shfmt 仍为非阻断报告步骤。该测试证明公共锁包装器的 Dry-run 行为，不替代所有部署入口的文件系统/网络系统调用级零副作用验证，也不代表真实 Rocky Linux 9 环境验收通过。
+
+
+## 八、M5 恢复前置校验基础（2026-11-13）
+
+新增 `scripts/lib/etcd-restore.sh` 中的 `ks_etcd_restore_manifest_validate` 只读校验函数及 `tests/etcd-restore.bats` 回归用例。校验器要求 manifest 和 snapshot 均为普通非符号链接文件，拒绝组/其他用户可写的 manifest；严格检查 schema、必需字段、重复/未知字段、etcd 版本、集群名、成员拓扑、snapshot SHA256 和文件大小，并校验 revision/hash/cluster ID 等字段格式。
+
+该函数不连接节点、不执行恢复、不调用 etcdutl，也不证明 manifest 的来源真实性；manifest 若由具有写权限的同一主体伪造，SHA256 本身不能建立可信来源。调用方仍必须独立执行 `etcdutl snapshot status` 并核对 revision/hash/size，检查成员状态、证书和目录空间，再进入任何后续事务。当前校验库尚未接入 `scripts/04-deploy-etcd.sh` 命令入口，也未实现 manifest 生成、远端 Prepare/Commit/Rollback。
+
+新增 9 项 Bats 测试覆盖正常校验、哈希篡改、集群/拓扑不匹配、重复/未知字段、符号链接、文件大小不匹配及不安全权限。代码已推送至 `m12/hardening-and-validation`；Bats、ShellCheck 和 GitHub Actions 结果待本提交 CI 实际运行后更新。不得将此项基础校验描述为 etcd restore 已实现。
