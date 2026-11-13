@@ -135,7 +135,7 @@ Set `DRY_RUN=false` only after the cluster is intentionally available for authen
 bin/deploy-step.sh --config cluster.env verify
 ```
 
-The checker writes mode-0600 text and JSON reports under `output/reports` and verifies that all system namespace pod image references are covered by the digest/archive lock. For explicit E2E tests, first pin/import `m9-test-busybox` (`docker.io/library/busybox:1.37.0`) in `images.lock.tsv`, then run `scripts/10-cluster-check.sh --config cluster.env --e2e`. This creates a temporary namespace and two pods pinned to different nodes with `imagePullPolicy: Never`; it tests Pod IP traffic, DNS, ClusterIP, Service DNS and NodePort, then schedules namespace deletion on exit. Without `--e2e`, these checks remain NOT_VERIFIED and overall status is PARTIAL.
+The checker writes mode-0600 text and JSON reports under `output/reports` and verifies that all system namespace pod image references are covered by the digest/archive lock. For explicit E2E tests, first pin/import `m9-test-busybox` (`docker.io/library/busybox:1.37.0`) in `images.lock.tsv`, then run `scripts/10-cluster-check.sh --config cluster.env --e2e`. This creates a temporary namespace and two pods pinned to different nodes with `imagePullPolicy: Never`; it tests Pod IP traffic, DNS, ClusterIP, Service DNS, NodePort and NetworkPolicy deny/recovery, then schedules namespace deletion on exit. Without `--e2e`, these checks remain NOT_VERIFIED and overall status is PARTIAL.
 
 ## Cleanup (stop only)
 

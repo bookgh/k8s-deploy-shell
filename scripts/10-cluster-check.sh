@@ -79,6 +79,10 @@ if [[ ! -x $KUBECTL || ! -f $KUBECONFIG ]]; then
   ks_report_add "$CHECKS" api-readyz NOT_VERIFIED 'kubectl/admin kubeconfig unavailable'
   ks_report_add "$CHECKS" etcd-quorum NOT_VERIFIED 'API credentials unavailable'
   ks_report_add "$CHECKS" node-readiness NOT_VERIFIED 'API credentials unavailable'
+  ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'API credentials unavailable'
+  ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'API credentials unavailable'
+  ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'API credentials unavailable'
+  ks_report_add "$CHECKS" network-policy-e2e NOT_VERIFIED 'API credentials unavailable'
 else
   export KUBECONFIG
   ks_run_check api-livez "$KUBECTL" get --raw=/livez
@@ -216,6 +220,26 @@ YAML
             ks_run_check service-clusterip-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$SERVICE_IP:8080/"
             ks_run_check service-dns-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://ks-e2e-service.$E2E_NS.svc.$CLUSTER_DOMAIN:8080/"
             ks_run_check service-nodeport-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$NODE_IP:$NODE_PORT/"
+            cat > "$WORK/deny-ingress.yaml" <<YAML
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ks-e2e-deny-ingress
+  namespace: "$E2E_NS"
+spec:
+  podSelector:
+    matchLabels:
+      app: ks-e2e-server
+  policyTypes:
+    - Ingress
+  ingress: []
+YAML
+            ks_run_check network-policy-create "$KUBECTL" apply -f "$WORK/deny-ingress.yaml"
+            sleep 3
+            ks_run_check network-policy-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- sh -c 'if wget -q -T 3 -O - "$1"; then exit 1; else exit 0; fi' sh "http://$SERVER_IP:8080/"
+            ks_run_check network-policy-delete "$KUBECTL" delete networkpolicy ks-e2e-deny-ingress -n "$E2E_NS" --ignore-not-found=true
+            sleep 3
+            ks_run_check network-policy-recovery-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$SERVER_IP:8080/"
           fi
         else
           ks_report_add "$CHECKS" pod-network-e2e FAIL 'unable to retrieve E2E pod state'
@@ -226,16 +250,19 @@ YAML
         ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'two schedulable nodes are required for cross-node test'
         ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'two schedulable nodes are required for E2E test'
         ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'two schedulable nodes are required for E2E test'
+        ks_report_add "$CHECKS" network-policy-e2e NOT_VERIFIED 'two schedulable nodes are required for E2E test'
       fi
     else
       ks_report_add "$CHECKS" pod-network-e2e FAIL 'images.lock.tsv missing; M9 E2E image must be pinned'
       ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'E2E image lock unavailable'
       ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'E2E image lock unavailable'
+      ks_report_add "$CHECKS" network-policy-e2e NOT_VERIFIED 'E2E image lock unavailable'
     fi
   else
     ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'run scripts/10-cluster-check.sh --e2e after pinning/importing the M9 test image'
     ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'in-Pod DNS lookup requires explicit --e2e'
     ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'ClusterIP and NodePort traffic requires explicit --e2e'
+    ks_report_add "$CHECKS" network-policy-e2e NOT_VERIFIED 'NetworkPolicy enforcement requires explicit --e2e'
   fi
 fi
 if [[ -x $ROOT/scripts/04-deploy-etcd.sh ]]; then
