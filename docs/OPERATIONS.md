@@ -125,3 +125,24 @@ bin/deploy-step.sh --config cluster.env addons verify
 ```
 
 Only after completing the full image closure audit, reviewing the plan, confirming the pinned chart compatibility and setting `DRY_RUN=false`, may an operator run `bin/deploy-step.sh --config cluster.env --apply addons`. This stage activates kubelet before Calico bootstrap and kube-proxy after Calico becomes Available, then installs CoreDNS and NodeLocal DNSCache. This flow has not been validated on a real Rocky Linux 9 cluster and must not be treated as production-ready until M9 acceptance passes.
+
+
+## M9 acceptance report (read-only)
+
+Set `DRY_RUN=false` only after the cluster is intentionally available for authenticated checks, then run:
+
+```bash
+bin/deploy-step.sh --config cluster.env verify
+```
+
+The checker writes mode-0600 text and JSON reports under `output/reports`. A PARTIAL result (exit 78) is expected until cross-node Pod-to-Pod, in-Pod DNS and Service/NodePort E2E tests are implemented and run with a pinned test image. A PASS is not emitted while any check is NOT_VERIFIED.
+
+## Cleanup (stop only)
+
+Preview with `bin/deploy-step.sh --config cluster.env cleanup`. To stop Kubernetes services, set `DRY_RUN=false` and explicitly add `--apply` to `scripts/13-clean-cluster.sh stop`. The cleanup command never deletes etcd, containerd, PKI, kubeconfig, Harbor or workload data. `delete-data` is blocked.
+
+## Upgrade planner and offline bundle
+
+Preview the upgrade sequence with `bin/deploy-step.sh --config cluster.env upgrade-plan`; pass `--target-version vX.Y.Z` directly to `scripts/14-upgrade.sh` for a target-specific plan. Actual upgrade execution is blocked pending Rocky Linux 9 HA/restore/rollback tests.
+
+Preview bundle requirements with `bin/deploy-step.sh --config cluster.env bundle`. Bundle creation requires `DRY_RUN=false`, explicit `--apply`, a complete `images.lock.tsv`, verified artifact cache and a sanitized cache with no symlinks or sensitive files. It excludes cluster secrets and does not publish a GitHub Release.

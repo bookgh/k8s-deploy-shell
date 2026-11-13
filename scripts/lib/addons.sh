@@ -46,10 +46,11 @@ ks_images_verify_archives() {
 ks_addon_artifact() {
   local name=$1 expected_version=$2 expected_url=$3 file sha version arch url
   IFS=$'\t' read -r file sha version arch url < <(ks_manifest_lookup "$ROOT/artifacts/manifest.tsv" "$name")
-  [[ $version == "$expected_version" && $url == "$expected_url" && $sha =~ ^[a-fA-F0-9]{64}$ ]] || {
+  [[ $version == "$expected_version" && ( $arch == amd64 || $arch == noarch ) && $url == "$expected_url" && $sha =~ ^[a-fA-F0-9]{64}$ ]] || {
     ks_log ERROR "Addon artifact pin mismatch: $name"
     return 2
   }
   REPLY=$file
   KS_ADDON_SHA=$sha
+  export KS_ADDON_SHA
 }

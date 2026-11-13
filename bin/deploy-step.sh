@@ -42,7 +42,7 @@ case $STEP in
   build-nginx) exec "$ROOT/scripts/08-build-nginx-stream.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" build ;;
   worker-proxy) exec "$ROOT/scripts/09-deploy-worker-proxy.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" deploy ;;
   addons) exec "$ROOT/scripts/12-deploy-addons.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" deploy ;;
-  verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
+  cleanup) exec "$ROOT/scripts/13-clean-cluster.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" stop ;;
   upgrade-plan) exec "$ROOT/scripts/14-upgrade.sh" --config "$CONFIG" plan ;;
   bundle) exec "$ROOT/scripts/15-build-offline-bundle.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" build ;;
   *) echo "Unknown step: $STEP" >&2; exit 2 ;;

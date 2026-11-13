@@ -14,8 +14,8 @@ This record distinguishes implemented local tooling from component deployment th
 | M7 runtime/kubelet/proxy | Partial | Containerd/runc/CNI CRI, kubelet/kube-proxy binaries and disabled units, plus Rocky 9-built Nginx stream proxy on Workers with loopback-only TCP passthrough. Coordinated kubelet/kube-proxy activation is deferred until M8 add-ons are installed |
 | M8 Harbor/Addons | Partial | Calico 3.33.0, CoreDNS 1.48.2 and a Kubernetes v1.37.2-derived NodeLocal DNSCache chart are pinned; Helm 3.22.1 and an image-lock/import path exist. Apply is fail-closed until the full rendered/operator image closure and archive lock are populated and Rocky 9 integration is validated. Harbor and online image modes remain blocked |
 | M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; full live checks and safe cleanup remain |
-| M10 upgrade/recovery | Not implemented | No upgrade/rollback workflow |
-| M11 release | Partial | CI checks only; no verified offline bundle or release workflow |
+| M10 upgrade/recovery | Partial | One-minor-step upgrade planner and downgrade guard exist; apply remains blocked pending etcd restore, HA rolling-upgrade and Rocky 9 integration tests |
+| M11 release | Partial | Sanitized offline bundle builder exists; apply requires a complete image lock and verified artifact cache. No GitHub Release is created automatically |
 
 ## Verification record
 
@@ -29,3 +29,10 @@ No Rocky Linux 9 target cluster, containerd CRI runtime, kubelet/kube-proxy serv
 ## M8 implementation note — 2026-11-13
 
 M8 now includes immutable Calico CRD/operator and CoreDNS chart artifacts, Helm 3.22.1 (Helm 3 is required by the current Calico installation guide), a local NodeLocal DNSCache chart based on the Kubernetes v1.37.2 upstream manifest, image archive lock validation/import, and an explicit addon deployment entrypoint. The script currently supports only `local-import`; it refuses Harbor and online modes. A real `images.lock.tsv` is intentionally not committed: every rendered and operator-generated image must be independently pinned by OCI digest and paired with a SHA256-verified archive before apply. M8 remains partial until the image closure, runtime import behavior, CoreDNS/NodeLocal values, Calico bootstrap, and Rocky Linux 9 cluster integration pass.
+
+
+## M9–M11 implementation note — 2026-11-13
+
+M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint and per-node loopback API checks with text/JSON reports. It explicitly records Pod-to-Pod, in-Pod DNS and Service/NodePort E2E as NOT_VERIFIED until a dedicated test workload/image is pinned. Cleanup is stop-only; data deletion is blocked.
+
+M10 provides a one-minor-step upgrade planner and downgrade guard. It does not execute upgrades. M11 provides a sanitized bundle builder that excludes cluster.env, known_hosts, PKI, kubeconfigs and state; bundle creation remains blocked until a complete images.lock.tsv and verified artifact/image cache exist. No release is published.

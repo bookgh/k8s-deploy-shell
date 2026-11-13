@@ -15,7 +15,7 @@ jobs:
       - name: Install shell tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck shfmt bats
+          sudo apt-get install -y shellcheck shfmt bats jq
       - name: Syntax
         run: find bin scripts tests -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
       - name: ShellCheck
