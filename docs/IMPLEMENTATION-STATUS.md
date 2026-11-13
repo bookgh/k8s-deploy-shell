@@ -82,3 +82,6 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 该命令不连接节点、不执行恢复、不调用 etcdutl，也不证明 manifest 的来源真实性；manifest 若由具有写权限的同一主体伪造，SHA256 本身不能建立可信来源。调用方仍必须独立执行 `etcdutl snapshot status` 并核对 revision/hash/size，检查成员状态、证书和目录空间，再进入任何后续事务。当前校验库尚未接入 `scripts/04-deploy-etcd.sh` 命令入口，也未实现 manifest 生成、远端 Prepare/Commit/Rollback。
 
 新增 11 项 Bats 测试覆盖正常校验、哈希篡改、集群/拓扑不匹配、重复/未知字段、符号链接、文件大小不匹配及不安全权限。代码已推送至 `m12/hardening-and-validation`；Bats、ShellCheck 和 GitHub Actions 结果待本提交 CI 实际运行后更新。不得将此项基础校验描述为 etcd restore 已实现。
+
+
+本节 11 项 Bats 用例在初次集成时发现测试文件重复块和缺少 `etcd.sh` 测试依赖加载；已分别清理并补齐。最近修复提交为 `a220c54e5b4f5afae3efc5118873fa69d8ca3ee8`。之前 Shell CI run #113 的失败源于上述测试夹具问题，不能作为当前代码通过证据；修复后必须以最新 CI 运行结果为准。
