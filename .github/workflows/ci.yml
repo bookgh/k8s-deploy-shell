@@ -46,10 +46,10 @@ jobs:
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' -o /tmp/tigera-operator-v3.33.0.tgz https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz
           printf '%s  %s\n' 'efcc8633742c136708cd8de9673862c6eee3a91ed176d7f2835690ab625ad846' /tmp/tigera-operator-v3.33.0.tgz | sha256sum -c -
           /tmp/linux-amd64/helm lint /tmp/tigera-operator-v3.33.0.tgz
-          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' -o /tmp/projectcalico.org.v3-v3.33.0.tgz https://github.com/projectcalico/calico/releases/download/v3.33.0/projectcalico.org.v3-v3.33.0.tgz
-          printf '%s  %s\n' 'ae76d7eeb13d132012fa0f24ba8972aa0ca6dd9810edf5b643d3cc713e7b86fc' /tmp/projectcalico.org.v3-v3.33.0.tgz | sha256sum -c -
-          /tmp/linux-amd64/helm lint /tmp/projectcalico.org.v3-v3.33.0.tgz
-          /tmp/linux-amd64/helm template calico-crds /tmp/projectcalico.org.v3-v3.33.0.tgz --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy > /tmp/calico-crds.yaml
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' -o /tmp/crd.projectcalico.org.v1-v3.33.0.tgz https://github.com/projectcalico/calico/releases/download/v3.33.0/crd.projectcalico.org.v1-v3.33.0.tgz
+          printf '%s  %s\n' 'bbb9643633609941ef2a00b400798b2967a348d55ad8d1e20bd9f61c3ec3c73f' /tmp/crd.projectcalico.org.v1-v3.33.0.tgz | sha256sum -c -
+          /tmp/linux-amd64/helm lint /tmp/crd.projectcalico.org.v1-v3.33.0.tgz
+          /tmp/linux-amd64/helm template calico-crds /tmp/crd.projectcalico.org.v1-v3.33.0.tgz --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy > /tmp/calico-crds.yaml
           grep -q CustomResourceDefinition /tmp/calico-crds.yaml
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' -o /tmp/coredns-1.48.2.tgz https://github.com/coredns/helm/releases/download/coredns-1.48.2/coredns-1.48.2.tgz
           printf '%s  %s\n' '7543caa3d30ef91660bf4373384ef657e09fdb42133d4163b0792613c808a464' /tmp/coredns-1.48.2.tgz | sha256sum -c -

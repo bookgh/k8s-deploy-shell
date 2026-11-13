@@ -132,7 +132,7 @@ else
             fi
           done < <(jq -r '.items[] | ((.spec.initContainers // []) + (.spec.containers // []) + (.spec.ephemeralContainers // []))[] | .image' "$WORK/images-$namespace.json")
         done
-        ((image_unknown == 0)) && ks_report_add "$CHECKS" addon-image-closure PASS 'all system namespace pod images are present in the digest/archive lock'
+        if ((image_unknown == 0)); then ks_report_add "$CHECKS" addon-image-closure PASS 'all system namespace pod images are present in the digest/archive lock'; fi
       else
         ks_report_add "$CHECKS" addon-image-closure FAIL 'one or more locked image archives are missing or have a SHA256 mismatch'
       fi

@@ -117,7 +117,7 @@ spec:
       containers:
         - name: node-cache
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ end }}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           args:

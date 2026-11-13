@@ -3,7 +3,7 @@ calico:
   repository: https://docs.tigera.io/calico/charts
   chart: tigera-operator
   version: "3.33.0"
-  crd_chart: projectcalico.org.v3
+  crd_chart: crd.projectcalico.org.v1
   crd_version: "3.33.0"
 coredns:
   repository: https://coredns.github.io/helm

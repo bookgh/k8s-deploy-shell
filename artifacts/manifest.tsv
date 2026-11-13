@@ -15,5 +15,5 @@ cni-plugins	1.10.0	amd64	https://github.com/containernetworking/plugins/releases
 helm	3.22.1	amd64	https://get.helm.sh/helm-v3.22.1-linux-amd64.tar.gz	896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea	helm-v3.22.1-linux-amd64.tar.gz
 nginx-source	1.30.6	noarch	https://nginx.org/download/nginx-1.30.6.tar.gz	3cf46f5ed7504d460125866b7bea99fb357f31d887e2e63b35503310e9b8b6c8	nginx-1.30.6.tar.gz
 calico-operator-chart	3.33.0	noarch	https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz	efcc8633742c136708cd8de9673862c6eee3a91ed176d7f2835690ab625ad846	tigera-operator-v3.33.0.tgz
-calico-crds-chart	3.33.0	noarch	https://github.com/projectcalico/calico/releases/download/v3.33.0/projectcalico.org.v3-v3.33.0.tgz	ae76d7eeb13d132012fa0f24ba8972aa0ca6dd9810edf5b643d3cc713e7b86fc	projectcalico.org.v3-v3.33.0.tgz
+calico-crds-chart	3.33.0	noarch	https://github.com/projectcalico/calico/releases/download/v3.33.0/crd.projectcalico.org.v1-v3.33.0.tgz	bbb9643633609941ef2a00b400798b2967a348d55ad8d1e20bd9f61c3ec3c73f	crd.projectcalico.org.v1-v3.33.0.tgz
 coredns-chart	1.48.2	noarch	https://github.com/coredns/helm/releases/download/coredns-1.48.2/coredns-1.48.2.tgz	7543caa3d30ef91660bf4373384ef657e09fdb42133d4163b0792613c808a464	coredns-1.48.2.tgz

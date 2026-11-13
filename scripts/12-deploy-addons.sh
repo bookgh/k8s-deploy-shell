@@ -43,6 +43,9 @@ fi
 ks_images_validate "$ROOT/images.lock.tsv"
 ks_images_require_ref "$ROOT/images.lock.tsv" calico-operator quay.io/tigera/operator:v1.44.0
 ks_images_require_ref "$ROOT/images.lock.tsv" calico quay.io/calico/calico:v3.33.0
+ks_images_require_ref "$ROOT/images.lock.tsv" calico-node quay.io/calico/node:v3.33.0
+ks_images_require_ref "$ROOT/images.lock.tsv" calico-cni-plugins quay.io/calico/third-party-cni-plugins:v3.33.0
+ks_images_require_ref "$ROOT/images.lock.tsv" calico-typha quay.io/calico/typha:v3.33.0
 ks_images_require_ref "$ROOT/images.lock.tsv" coredns registry.k8s.io/coredns/coredns:1.14.7
 ks_images_require_ref "$ROOT/images.lock.tsv" node-local-dns registry.k8s.io/dns/k8s-dns-node-cache:1.26.8
 ks_images_require_ref "$ROOT/images.lock.tsv" m9-test-busybox docker.io/library/busybox:1.37.0
@@ -50,7 +53,7 @@ ks_addon_artifact helm "$(ks_yaml_scalar "$ROOT/versions.yaml" helm version)" "h
 HELM_ARCHIVE=$REPLY; HELM_SHA=$KS_ADDON_SHA
 ks_addon_artifact calico-operator-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz"
 CALICO_CHART=$REPLY; CALICO_CHART_SHA=$KS_ADDON_SHA
-ks_addon_artifact calico-crds-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico crd_version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/projectcalico.org.v3-v3.33.0.tgz"
+ks_addon_artifact calico-crds-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico crd_version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/crd.projectcalico.org.v1-v3.33.0.tgz"
 CALICO_CRD_CHART=$REPLY; CALICO_CRD_SHA=$KS_ADDON_SHA
 ks_addon_artifact coredns-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" coredns version)" "https://github.com/coredns/helm/releases/download/coredns-1.48.2/coredns-1.48.2.tgz"
 COREDNS_CHART=$REPLY; COREDNS_CHART_SHA=$KS_ADDON_SHA
@@ -77,7 +80,7 @@ fi
 [[ ${KS_DRY_RUN:-true} == false ]] || { ks_log ERROR 'Set DRY_RUN=false before --apply'; exit 2; }
 [[ -r $SSH_KNOWN_HOSTS_FILE ]] || { ks_log ERROR "Known hosts file missing: $SSH_KNOWN_HOSTS_FILE"; exit 2; }
 ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"
-for cmd in curl flock tar grep awk stat install cp chmod rm mktemp realpath sha256sum; do ks_require_cmd "$cmd"; done
+for cmd in curl flock ssh tar grep awk stat install cp chmod rm mktemp realpath sha256sum; do ks_require_cmd "$cmd"; done
 [[ -f $OUTPUT_PATH/kubeconfig/admin.kubeconfig && ! -L $OUTPUT_PATH/kubeconfig/admin.kubeconfig ]] || { ks_log ERROR 'M6 admin kubeconfig missing'; exit 78; }
 [[ $(stat -c '%a' "$OUTPUT_PATH/kubeconfig/admin.kubeconfig") == 600 ]] || { ks_log ERROR 'Admin kubeconfig must be mode 0600'; exit 2; }
 KUBECTL=$OUTPUT_PATH/bin/kubectl
@@ -133,8 +136,15 @@ KUBECONFIG=$OUTPUT_PATH/kubeconfig/admin.kubeconfig
 "$KUBECTL" --kubeconfig "$KUBECONFIG" get --raw=/readyz >/dev/null
 "$HELM" template calico-crds "$CACHE_ROOT/$CALICO_CRD_CHART" --namespace tigera-operator --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy | "$KUBECTL" --kubeconfig "$KUBECONFIG" apply --server-side --force-conflicts -f -
 "$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Established --timeout=180s crd --all
+CALICO_OPERATOR_DIGEST=$(awk -F '\\t' '$1=="calico-operator" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
+[[ $CALICO_OPERATOR_DIGEST =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Calico operator image digest missing'; exit 2; }
 cat > "$ROOT/state/calico-values.yaml" <<YAML
+tigeraOperator:
+  image: tigera/operator
+  registry: quay.io
+  version: "v1.44.0@sha256:$CALICO_OPERATOR_DIGEST"
 installation:
+  imagePullPolicy: Never
   calicoNetwork:
     bgp: Disabled
     ipPools:
@@ -142,6 +152,12 @@ installation:
         encapsulation: VXLAN
         natOutgoing: Enabled
         nodeSelector: all()
+apiServer:
+  enabled: false
+goldmane:
+  enabled: false
+whisker:
+  enabled: false
 YAML
 "$HELM" upgrade --install calico "$CACHE_ROOT/$CALICO_CHART" --namespace tigera-operator --create-namespace --values "$ROOT/state/calico-values.yaml" --wait --timeout 10m
 "$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Available --timeout=15m tigerastatus/calico
@@ -157,6 +173,7 @@ cat > "$ROOT/state/coredns-values.yaml" <<YAML
 image:
   repository: registry.k8s.io/coredns/coredns
   tag: "$COREDNS_IMAGE_VERSION@sha256:$COREDNS_DIGEST"
+  pullPolicy: Never
 replicaCount: 2
 service:
   name: kube-dns
