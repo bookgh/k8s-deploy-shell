@@ -36,3 +36,19 @@ M8 now includes the stable `crd.projectcalico.org.v1` chart, Calico operator cha
 M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint, per-node loopback API, system-pod image-lock closure and containerd sandbox-image lock checks with text/JSON reports. Explicit --e2e uses a pinned BusyBox image with imagePullPolicy Never to test cross-node Pod IP, DNS, ClusterIP, Service DNS, NodePort and NetworkPolicy deny/recovery; without --e2e those traffic checks remain NOT_VERIFIED. Cleanup is stop-only; data deletion is blocked.
 
 M10 provides a one-minor-step upgrade planner and downgrade guard. It does not execute upgrades. M11 provides a reproducible sanitized bundle builder and verifier. It excludes cluster.env, known_hosts, PKI, kubeconfigs and runtime state, normalizes tar metadata with SOURCE_DATE_EPOCH, emits a portable SHA256 sidecar and validates the archive and embedded artifact/image checksums. Bundle creation remains blocked until a complete images.lock.tsv and verified artifact/image cache exist. No release is published.
+
+## M12 安全加固与验证记录（2026-11-13）
+
+本轮在独立分支 `m12/hardening-and-validation` 开展代码审查。已发现并修复制品缓存对符号链接的信任问题：
+
+- 制品下载入口拒绝符号链接缓存根目录、符号链接目标和非普通文件目标，避免校验后仍将缓存外文件当作可信制品。
+- 制品缓存验收要求缓存根目录及每个制品均为非符号链接的真实目录/普通文件。
+- 新增 Bats 回归用例，覆盖内容哈希正确但目标为符号链接，以及缓存根目录本身为符号链接两种情况。
+
+本轮验证边界：
+- 上述修改已推送至 M12 开发分支；尚未取得该分支 GitHub Actions 的实际运行结果，因此测试状态为“待 CI 验证”，不能标记通过。
+- 尚未在 Rocky Linux 9 amd64 真实节点执行安装、升级、etcd 恢复、CNI、DNS、网络策略和离线部署演练。
+- M0–M11 仍按各自现有证据标记为部分完成；本轮不把静态测试或代码审查替代真实集群验收。
+- 未生成生产 CA、未连接或修改任何真实集群、未发布 Release。
+
+后续 M12 必须继续检查离线归档解包安全、Dry-run 零副作用、远端命令参数边界、服务启动顺序、组件健康探测和恢复演练，并以实际 CI 与 Rocky Linux 9 集成证据更新状态。
