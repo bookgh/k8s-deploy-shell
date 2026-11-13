@@ -1,0 +1,7 @@
+apiVersion: v2
+name: nodelocaldns
+description: Kubernetes NodeLocal DNSCache chart based on the Kubernetes v1.37.2 upstream manifest
+type: application
+version: 1.37.2
+appVersion: "1.26.8"
+kubeVersion: ">=1.37.0-0 <1.38.0-0"

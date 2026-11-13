@@ -34,6 +34,13 @@ jobs:
           printf '%s  %s\n' 'a0fc7012d326705f5a318a0c5de7ef79a8a096e70ece13cebfc9c4af671ee02e' "$cache/cfssl_1.7.1_linux_amd64" | sha256sum -c -
           printf '%s  %s\n' '56783aa96f1554c765670b1ea6182bfb863a3cbfcd87032aa4423bdc1604dc74' "$cache/cfssljson_1.7.1_linux_amd64" | sha256sum -c -
           chmod 0644 "$cache/cfssl_1.7.1_linux_amd64" "$cache/cfssljson_1.7.1_linux_amd64"
+      - name: Install pinned Helm 3 and lint local charts
+        run: |
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 -o /tmp/helm-v3.22.1-linux-amd64.tar.gz https://get.helm.sh/helm-v3.22.1-linux-amd64.tar.gz
+          printf '%s  %s\n' '896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea' /tmp/helm-v3.22.1-linux-amd64.tar.gz | sha256sum -c -
+          tar -xzf /tmp/helm-v3.22.1-linux-amd64.tar.gz -C /tmp
+          /tmp/linux-amd64/helm version --short | grep -Fq 'v3.22.1'
+          /tmp/linux-amd64/helm lint charts/nodelocaldns
       - name: Bats
         run: bats tests
       - name: Reject forbidden implementation languages

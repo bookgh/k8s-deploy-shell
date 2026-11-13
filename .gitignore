@@ -15,3 +15,5 @@ config/known_hosts
 *.log
 *.tmp
 *.swp
+
+/images.lock.tsv

@@ -113,3 +113,15 @@ bin/deploy-step.sh --config cluster.env --apply worker-proxy
 ```
 
 The Worker listener is restricted to `127.0.0.1:<CONTROL_PLANE_PORT>`; Nginx uses stream TCP passthrough, so API-server TLS remains end-to-end. Upstreams are the configured Master IPs. Open-source Nginx provides passive connection-failure handling here; no active health-check directive is assumed. The service is enabled and started by this stage, but kubelet/kube-proxy remain disabled until the M8 add-on stage and explicit node activation.
+
+
+## Addons M8 (partial / guarded)
+
+M8 uses pinned charts and a local NodeLocal DNSCache chart. The current implementation supports only `IMAGE_MODE=local-import`; Harbor and online image modes are intentionally blocked. Create `images.lock.tsv` from the example only after rendering all charts and auditing all operator-generated images. Each image row must contain repository:tag, OCI digest, archive filename, archive SHA256 and linux/amd64. Copy verified archives into the Caddy cache, then run:
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run addons
+bin/deploy-step.sh --config cluster.env addons verify
+```
+
+Only after completing the full image closure audit, reviewing the plan, confirming the pinned chart compatibility and setting `DRY_RUN=false`, may an operator run `bin/deploy-step.sh --config cluster.env --apply addons`. This stage activates kubelet before Calico bootstrap and kube-proxy after Calico becomes Available, then installs CoreDNS and NodeLocal DNSCache. This flow has not been validated on a real Rocky Linux 9 cluster and must not be treated as production-ready until M9 acceptance passes.

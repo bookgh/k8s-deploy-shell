@@ -1,13 +1,17 @@
-# Pin chart versions after compatibility and image-closure validation. Empty values block addon deployment.
+# Chart versions are immutable pins; no latest lookup is permitted at deploy time.
 calico:
-  repository: https://projectcalico.docs.tigera.io/charts
+  repository: https://docs.tigera.io/calico/charts
   chart: tigera-operator
-  version: ""
+  version: "3.33.0"
+  crd_chart: crd.projectcalico.org.v1
+  crd_version: "3.33.0"
 coredns:
   repository: https://coredns.github.io/helm
   chart: coredns
-  version: ""
+  version: "1.48.2"
+  app_version: "1.14.7"
 nodelocaldns:
-  repository: https://kubernetes.github.io/kubernetes-charts
+  repository: local
   chart: nodelocaldns
-  version: ""
+  version: "1.37.2"
+  app_version: "1.26.8"

@@ -61,7 +61,7 @@ etcd 成员变更不清空数据；快照可恢复。API Server TLS/RBAC/Node au
 | M0–M5 | Previously recorded in `docs/IMPLEMENTATION-STATUS.md`; retain their existing acceptance gates |
 | M6 | Partial: control-plane binaries, systemd units and kubeconfigs are present; HA rollout and live API validation remain unverified |
 | M7 | Partial: containerd CRI, kubelet/kube-proxy binaries, node-specific kubeconfigs and disabled service units are present; Worker Nginx stream proxy and service activation remain |
-| M8 | Not implemented: Harbor, Calico, CoreDNS and NodeLocal DNSCache are not yet deployable |
+| M8 | Partial: pinned Calico/CoreDNS chart artifacts, local NodeLocal chart, image lock/import helper and guarded addon deployment entrypoint; image closure and cluster validation remain |
 | M9–M11 | Not implemented: end-to-end acceptance, upgrade/recovery and release packaging remain |
 
 A milestone is not complete merely because scripts exist. Each stage must pass static checks, unit tests, idempotence/dry-run checks, failure-path tests and Rocky Linux 9 integration tests before its status is changed to complete.

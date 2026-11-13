@@ -1,0 +1,5 @@
+# Reviewed defaults for the CoreDNS chart; actual values are rendered by scripts/12-deploy-addons.sh.
+replicaCount: 2
+service:
+  name: kube-dns
+  clusterIP: 10.96.0.10

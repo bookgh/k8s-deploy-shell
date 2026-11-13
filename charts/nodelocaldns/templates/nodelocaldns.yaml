@@ -1,0 +1,191 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns-upstream
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/name: KubeDNSUpstream
+spec:
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+  selector:
+    k8s-app: kube-dns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+data:
+  Corefile: |
+    {{ .Values.clusterDomain }}:53 {
+        errors
+        cache {
+            success 9984 30
+            denial 9984 5
+        }
+        reload
+        loop
+        bind {{ .Values.localIP }}{{ if ne .Values.kubeProxyMode "ipvs" }} {{ .Values.clusterDNS }}{{ end }}
+        forward . {{ .Values.clusterDNS }} {
+            force_tcp
+        }
+        prometheus :9253
+        health {{ .Values.localIP }}:8080
+    }
+    in-addr.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ .Values.localIP }}{{ if ne .Values.kubeProxyMode "ipvs" }} {{ .Values.clusterDNS }}{{ end }}
+        forward . {{ .Values.clusterDNS }} {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    ip6.arpa:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ .Values.localIP }}{{ if ne .Values.kubeProxyMode "ipvs" }} {{ .Values.clusterDNS }}{{ end }}
+        forward . {{ .Values.clusterDNS }} {
+            force_tcp
+        }
+        prometheus :9253
+    }
+    .:53 {
+        errors
+        cache 30
+        reload
+        loop
+        bind {{ .Values.localIP }}{{ if ne .Values.kubeProxyMode "ipvs" }} {{ .Values.clusterDNS }}{{ end }}
+        forward . /etc/resolv.conf
+        prometheus :9253
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  labels:
+    k8s-app: node-local-dns
+spec:
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 10%
+  selector:
+    matchLabels:
+      k8s-app: node-local-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: node-local-dns
+      annotations:
+        prometheus.io/port: "9253"
+        prometheus.io/scrape: "true"
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: node-local-dns
+      hostNetwork: true
+      dnsPolicy: Default
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: node-cache
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ end }}"
+          imagePullPolicy: IfNotPresent
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          args:
+            - -localip
+            - {{ if eq .Values.kubeProxyMode "ipvs" }}{{ .Values.localIP | quote }}{{ else }}{{ printf "%s,%s" .Values.localIP .Values.clusterDNS | quote }}{{ end }}
+            - -conf
+            - /etc/Corefile
+            - -upstreamsvc
+            - kube-dns-upstream
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 9253
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              host: {{ .Values.localIP | quote }}
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /run/xtables.lock
+              name: xtables-lock
+            - name: config-volume
+              mountPath: /etc/coredns
+            - name: kube-dns-config
+              mountPath: /etc/kube-dns
+      volumes:
+        - name: xtables-lock
+          hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+        - name: kube-dns-config
+          configMap:
+            name: kube-dns
+            optional: true
+        - name: config-volume
+          configMap:
+            name: node-local-dns
+            items:
+              - key: Corefile
+                path: Corefile
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-local-dns
+  namespace: kube-system
+  annotations:
+    prometheus.io/port: "9253"
+    prometheus.io/scrape: "true"
+  labels:
+    k8s-app: node-local-dns
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9253
+      targetPort: 9253
+  selector:
+    k8s-app: node-local-dns

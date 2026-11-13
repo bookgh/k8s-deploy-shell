@@ -228,7 +228,7 @@ containerRuntimeEndpoint: "unix://$CONTAINERD_STATE_DIR/containerd.sock"
 rootDir: "$KUBELET_DATA_DIR"
 certDirectory: "$KUBELET_DATA_DIR/pki"
 clusterDNS:
-  - "$CLUSTER_DNS"
+  - "$NODELOCAL_DNS_IP"
 clusterDomain: "$CLUSTER_DOMAIN"
 staticPodPath: "$KUBERNETES_CONFIG_DIR/manifests"
 resolvConf: /etc/resolv.conf

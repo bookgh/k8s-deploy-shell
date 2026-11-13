@@ -103,3 +103,9 @@ setup() {
   run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/port-collision.env"
   [ "$status" -ne 0 ]
 }
+
+@test "NodeLocal DNS address must be in the link-local range" {
+  sed 's#NODELOCAL_DNS_IP=169.254.20.10#NODELOCAL_DNS_IP=10.96.0.20#' "$TMP" > "$BATS_TEST_TMPDIR/bad-nodelocal.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/bad-nodelocal.env"
+  [ "$status" -ne 0 ]
+}
