@@ -57,7 +57,18 @@ bin/deploy-step.sh --config cluster.env etcd-members
 bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-安装程序拒绝在非空数据目录或活动成员不匹配的情况下初始化集群。它不会自动添加/删除成员。当前只提供快照保存与状态检查，不提供自动或受保护的快照恢复子命令；不得将“快照保存成功”视为恢复能力已实现。快照文件暂存在 etcd 成员的 `ETCD_BACKUP_DIR`；必须将其复制到独立管理的加密备份存储，并按 etcd 官方流程在隔离环境中完成恢复演练后，才能把恢复能力标记为已验证。Systemd 启动成功不代表 quorum 已建立，必须使用 `etcd-health` 和 `etcd-members` 检查。
+安装程序拒绝在非空数据目录或活动成员不匹配的情况下初始化集群。它不会自动添加/删除成员。当前提供快照保存、状态检查，以及本地只读 `restore-preflight` 清单预检；不提供自动或受保护的快照恢复子命令，不得将预检通过或“快照保存成功”视为恢复能力已实现。快照文件暂存在 etcd 成员的 `ETCD_BACKUP_DIR`；必须将其复制到独立管理的加密备份存储，并按 etcd 官方流程在隔离环境中完成恢复演练后，才能把恢复能力标记为已验证。
+
+本地恢复清单预检（只读，不连接集群）：
+
+```bash
+scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \
+  --snapshot /secure/backup/cluster.db \
+  --manifest /secure/backup/restore.manifest
+```
+
+清单当前要求 12 个 TSV 键：`schema_version`、`cluster_name`、`etcd_version`、`snapshot_sha256`、`snapshot_revision`、`snapshot_hash`、`snapshot_total_keys`、`snapshot_total_size`、`snapshot_file_size`、`cluster_id`、`members`、`created_at_utc`。成员值必须与当前 inventory 生成的 initial-cluster 字符串完全一致。此命令只验证文件类型/权限、字段格式、集群/版本/成员匹配、SHA256 和文件字节数；不会生成 manifest，也不会运行 `etcdutl snapshot status`。执行正式恢复前仍须交叉核对 etcdutl 的 HASH/REVISION/TOTAL KEYS/TOTAL SIZE、快照来源真实性、成员拓扑、证书、磁盘和 SELinux 状态。当前 manifest 没有签名验证，SHA256 sidecar 不能防御同权限主体篡改。
+Systemd 启动成功不代表 quorum 已建立，必须使用 `etcd-health` 和 `etcd-members` 检查。
 
 ## 四、如实报告实施状态
 
