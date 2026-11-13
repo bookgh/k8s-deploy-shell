@@ -94,46 +94,10 @@ setup() {
   run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
   [ "$status" -ne 0 ]
 }
-\t' read -r _ _ etcd_version _ _ < <(ks_manifest_lookup "$ROOT/artifacts/manifest.tsv" etcd)
-  snapshot="$BATS_TEST_TMPDIR/snapshot.db"
-  manifest="$BATS_TEST_TMPDIR/restore.manifest"
-  printf 'synthetic-etcd-snapshot-fixture\n' > "$snapshot"
-  snapshot_sha=$(ks_sha256_file "$snapshot")
-  snapshot_size=$(stat -c '%s' "$snapshot")
-  write_manifest() {
-    printf '%s\t%s\n' \
-      schema_version 1 \
-      cluster_name test-cluster \
-      etcd_version 3.7.3 \
-      snapshot_sha256 "$snapshot_sha" \
-      snapshot_revision 42 \
-      snapshot_hash 0123456789abcdef \
-      snapshot_total_keys 17 \
-      snapshot_total_size 4096 \
-      snapshot_file_size "$snapshot_size" \
-      cluster_id 0123456789abcdef \
-      members 'master-1=https://192.0.2.11:2380' \
-      created_at_utc 2026-11-13T00:00:00Z > "$manifest"
-    chmod 0600 "$manifest"
-  }
-  write_manifest
-}
 
 @test "restore-preflight CLI validates local metadata without applying" {
   cli_manifest="$BATS_TEST_TMPDIR/cli.manifest"
-  printf '%s\\t%s\\n' \\
-    schema_version 1 \\
-    cluster_name "$CLUSTER_NAME" \\
-    etcd_version "$etcd_version" \\
-    snapshot_sha256 "$snapshot_sha" \\
-    snapshot_revision 42 \\
-    snapshot_hash 0123456789abcdef \\
-    snapshot_total_keys 17 \\
-    snapshot_total_size 4096 \\
-    snapshot_file_size "$snapshot_size" \\
-    cluster_id 0123456789abcdef \\
-    members "$cluster_members" \\
-    created_at_utc 2026-11-13T00:00:00Z > "$cli_manifest"
+  printf '%s\t%s\n' schema_version 1 cluster_name "$CLUSTER_NAME" etcd_version "$etcd_version" snapshot_sha256 "$snapshot_sha" snapshot_revision 42 snapshot_hash 0123456789abcdef snapshot_total_keys 17 snapshot_total_size 4096 snapshot_file_size "$snapshot_size" cluster_id 0123456789abcdef members "$cluster_members" created_at_utc 2026-11-13T00:00:00Z > "$cli_manifest"
   chmod 0600 "$cli_manifest"
   run "$ROOT/scripts/04-deploy-etcd.sh" --config "$BATS_TEST_TMPDIR/cluster.env" restore-preflight --snapshot "$snapshot" --manifest "$cli_manifest"
   [ "$status" -eq 0 ]
