@@ -54,6 +54,44 @@ jobs:
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' -o /tmp/coredns-1.48.2.tgz https://github.com/coredns/helm/releases/download/coredns-1.48.2/coredns-1.48.2.tgz
           printf '%s  %s\n' '7543caa3d30ef91660bf4373384ef657e09fdb42133d4163b0792613c808a464' /tmp/coredns-1.48.2.tgz | sha256sum -c -
           /tmp/linux-amd64/helm lint /tmp/coredns-1.48.2.tgz
+          cat > /tmp/calico-values.yaml <<'YAML'
+          tigeraOperator:
+            image: tigera/operator
+            registry: quay.io
+            version: v1.44.0
+          installation:
+            imagePullPolicy: Never
+            calicoNetwork:
+              bgp: Disabled
+              ipPools:
+                - cidr: 192.168.0.0/16
+                  encapsulation: VXLAN
+                  natOutgoing: Enabled
+                  nodeSelector: all()
+          apiServer:
+            enabled: false
+          goldmane:
+            enabled: false
+          whisker:
+            enabled: false
+          YAML
+          /tmp/linux-amd64/helm template calico /tmp/tigera-operator-v3.33.0.tgz --values /tmp/calico-values.yaml > /tmp/calico-rendered.yaml
+          grep -q 'quay.io/tigera/operator:v1.44.0' /tmp/calico-rendered.yaml
+          grep -q 'imagePullPolicy: Never' /tmp/calico-rendered.yaml
+          cat > /tmp/coredns-values.yaml <<'YAML'
+          image:
+            repository: registry.k8s.io/coredns/coredns
+            tag: 1.14.7
+            pullPolicy: Never
+          service:
+            name: kube-dns
+            clusterIP: 10.96.0.10
+          YAML
+          /tmp/linux-amd64/helm template coredns /tmp/coredns-1.48.2.tgz --values /tmp/coredns-values.yaml > /tmp/coredns-rendered.yaml
+          grep -q 'imagePullPolicy: Never' /tmp/coredns-rendered.yaml
+          grep -q 'name: kube-dns' /tmp/coredns-rendered.yaml
+          /tmp/linux-amd64/helm template node-local-dns charts/nodelocaldns --set-string image.digest=sha256:0000000000000000000000000000000000000000000000000000000000000000 > /tmp/nodelocal-rendered.yaml
+          grep -q 'imagePullPolicy: Never' /tmp/nodelocal-rendered.yaml
       - name: Bats
         run: bats tests
       - name: Reject forbidden implementation languages
