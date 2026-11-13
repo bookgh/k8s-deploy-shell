@@ -45,3 +45,9 @@ setup() {
   run bash "$ROOT/scripts/remote/install-etcd.sh"
   [ "$status" -eq 2 ]
 }
+
+@test "remote etcd installer serializes node mutations with flock" {
+  grep -Fq 'flock -n 9' "$ROOT/scripts/remote/install-etcd.sh"
+  grep -Fq 'ks-deploy-shell-etcd.lock' "$ROOT/scripts/remote/install-etcd.sh"
+  grep -Fq 'flock;' "$ROOT/scripts/remote/install-etcd.sh"
+}
