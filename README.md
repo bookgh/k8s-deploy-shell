@@ -31,7 +31,7 @@ bin/install.sh --config cluster.env plan
 
 `CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元，以及 Worker Nginx stream loopback TCP 代理部署入口；kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更；当前只有快照保存入口，尚无受保护的快照恢复子命令。
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元，以及 Worker Nginx stream loopback TCP 代理部署入口；kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更；当前提供快照保存和本地 restore-preflight 元数据预检入口；尚无受保护的快照恢复子命令。
 
 ## etcd M5 使用顺序
 
