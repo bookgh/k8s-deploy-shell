@@ -73,3 +73,11 @@ SH
   grep -Fq "UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE" "$SSH_CAPTURE"
   grep -Fq 'root@192.0.2.11' "$SSH_CAPTURE"
 }
+
+@test "SSH rejects shell metacharacters and whitespace in remote arguments" {
+  KS_DRY_RUN=false
+  run ks_ssh 192.0.2.11 "uname -m;touch /tmp/ks-ssh-injection"
+  [ "$status" -eq 2 ]
+  [ ! -e "$SSH_CAPTURE" ]
+  [ ! -e /tmp/ks-ssh-injection ]
+}
