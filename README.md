@@ -10,7 +10,7 @@
 - Shell-only：禁止 Python、Perl、Ruby、Node.js、Go 承担项目逻辑。
 - Worker kubeconfig API endpoint 必须为 https://127.0.0.1:6443。
 - 部署阶段不访问公网；配置驱动版本、IP、CIDR、端口、目录和镜像。
-- 幂等、可审计、可恢复；以真实健康状态验收。
+- 幂等、可审计、可恢复；安装节点和关键远端组件使用并发锁；以真实健康状态验收。
 
 ## 文档
 
