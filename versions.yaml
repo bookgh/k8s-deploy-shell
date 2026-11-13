@@ -2,16 +2,16 @@
 kubernetes:
   version: v1.37.2
 etcd:
-  version: ""
+  version: v3.7.3
+cfssl:
+  version: "1.7.1"
+caddy:
+  version: "2.11.9"
 containerd:
   version: ""
 runc:
   version: ""
-cfssl:
-  version: "1.7.1"
 helm:
   version: ""
-caddy:
-  version: "2.11.9"
 nginx:
   version: ""

@@ -29,16 +29,23 @@ bin/install.sh --config cluster.env validate
 bin/install.sh --config cluster.env plan
 ```
 
-节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。M2 增加安装节点 Rocky Linux 9/amd64 预检、缓存校验和受保护的 Caddy Systemd 安装入口；M3 增加基于节点清单的 SSH/OS 只读预检。cluster.env.example 是示例，不是可直接用于生产的配置。charts.yaml 中的空版本必须在安装前锁定。
+节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-## 目录
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
 
-bin/ 为 CLI；scripts/lib/ 为 Bash 公共库；scripts/ 为步骤入口；config/ 和 templates/ 为配置模板；artifacts/ 为制品清单和缓存；pki/、output/、state/ 为运行时目录且敏感数据不入 Git；tests/ 为 Bats；.github/workflows/ 仅做 CI。
+## etcd M5 使用顺序
 
-## 安全
+```bash
+bin/install.sh --config cluster.env prepare
+scripts/00-prepare-install-node.sh --config cluster.env verify-cache
+# 启动/确认 Caddy 后：
+bin/deploy-step.sh --config cluster.env --dry-run pki
+bin/deploy-step.sh --config cluster.env --dry-run distribute-pki
+bin/deploy-step.sh --config cluster.env --dry-run etcd
+```
 
-默认保留 SELinux Enforcing，不全局关闭防火墙、不 flush 规则。已有 PKI/etcd/业务数据不得覆盖或删除。私钥不进入 Git 或 HTTP 根目录。任何危险操作必须备份、预览、显式确认。真实集群操作不在 CI 中执行。
+真实部署必须先完成节点/HostKey/PKI 检查，并显式设置 `DRY_RUN=false`、传入 `--apply`。不得在已有 etcd 数据目录上运行新集群初始化。
 
-## 状态
+## 安全与状态
 
-当前提交包含基础工程骨架、配置校验、制品清单校验和部分预览入口，不代表 Kubernetes 集群部署功能已经完成。请以 docs/IMPLEMENTATION-STATUS.md 为准。未经过 Rocky Linux 9 真实目标环境和故障恢复演练前，不得用于生产。
+默认保留 SELinux Enforcing，不全局关闭防火墙、不 flush 规则。已有 PKI/etcd/业务数据不得覆盖或删除。私钥不进入 Git 或 HTTP 根目录。真实 Rocky Linux 9 集群验证、etcd quorum 和快照恢复尚未完成；请以 docs/IMPLEMENTATION-STATUS.md 为准。

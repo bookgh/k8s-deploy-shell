@@ -19,27 +19,44 @@ bin/install.sh --config cluster.env prepare
 bin/install.sh --config cluster.env --dry-run prepare
 bin/deploy-step.sh --config cluster.env --dry-run init-system
 bin/deploy-step.sh --config cluster.env --dry-run pki
+bin/deploy-step.sh --config cluster.env --dry-run distribute-pki
+bin/deploy-step.sh --config cluster.env --dry-run etcd
+bin/deploy-step.sh --config cluster.env etcd-health
+bin/deploy-step.sh --config cluster.env etcd-members
+bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-`DRY_RUN=true` is the example default and is propagated into artifact preparation and step entrypoints. The CLI `--dry-run` flag forces preview mode even if the configuration says otherwise. Dry-run must not create cache directories, lock files, temporary files, keys, or change host state.
+`DRY_RUN=true` is the example default and is propagated into artifact preparation and step entrypoints. The CLI `--dry-run` flag forces preview mode. Dry-run must not create cache directories, lock files, temporary files, keys, SSH connections or host state.
 
-`prepare` is the online artifact-fetch phase. It requires a complete manifest and only accepts HTTPS sources with SHA256 verification. Set `DRY_RUN=false` in `cluster.env` deliberately to download artifacts. Then run `scripts/00-prepare-install-node.sh --config cluster.env verify-cache` and review the Caddy preview. Caddy installation additionally requires `DRY_RUN=false` and explicit `--apply`. This does not authorize deploying or connecting to cluster nodes.
+`prepare` is the online artifact-fetch phase. It requires a complete manifest and only accepts HTTPS sources with SHA256 verification. Set `DRY_RUN=false` deliberately to download artifacts. Then run `scripts/00-prepare-install-node.sh --config cluster.env verify-cache` and review the Caddy preview. Caddy installation additionally requires `DRY_RUN=false` and explicit `--apply`.
 
-`--check-ssh` is a read-only target check for SSH HostKey, remote OS release and architecture. It only performs SSH when `DRY_RUN=false`; with the example default it prints the SSH plan. No remote system changes are made.
+System initialization remains preview-only. PKI generation creates three independent root CAs and a separate ServiceAccount keypair. Existing non-empty PKI is never overwritten. Leaf keys are delivered by strict-HostKey SSH stdin and are not exposed through Caddy.
 
-System initialization remains preview-only. PKI `--apply` generates three independent root CAs (Kubernetes, etcd, front-proxy), the separate ServiceAccount keypair, API Server certificate, control-plane client certificates, per-node kubelet client/serving certificates, per-etcd-member server/peer certificates, etcd client certificates and front-proxy client certificate. Root CA validity is `876024h`; leaf validity is `876000h`. Leaf private keys are generated locally on the installation node; secure delivery to target nodes, rotation and recovery are not yet implemented. Existing non-empty PKI is never overwritten. CA private keys remain local and must be backed up offline. Caddy deployment is guarded by an explicit apply flag and requires the installation node to be Rocky Linux 9 / x86_64. Do not bypass these guards.
+## etcd M5
+
+The etcd binary is pinned to v3.7.3 with the upstream GitHub release asset digest. `versions.yaml` and `artifacts/manifest.tsv` must agree. Deploying etcd requires:
+- Rocky Linux 9 / x86_64 target nodes in the configured etcd member list.
+- Successful PKI generation and `distribute-pki`.
+- A running Caddy artifact server and verified local cache.
+- `DRY_RUN=false`, a dedicated known_hosts file, and explicit `--apply`.
+
+Preview first:
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run etcd
+```
+
+Only after reviewing the plan and confirming this is a new cluster with empty etcd data directories:
+
+```bash
+bin/deploy-step.sh --config cluster.env --apply etcd
+bin/deploy-step.sh --config cluster.env etcd-health
+bin/deploy-step.sh --config cluster.env etcd-members
+bin/deploy-step.sh --config cluster.env etcd-snapshot
+```
+
+The installer refuses to initialize over non-empty data directories or mismatched active members. It does not automatically add/remove members or restore snapshots. Snapshot files remain on an etcd member under `ETCD_BACKUP_DIR`; copy them to independently managed encrypted backup storage and test restore in an isolated environment. A successful systemd activation is not proof of quorum; use `etcd-health` and `etcd-members`.
 
 ## Honest status
 
-A successful config validation or plan is not evidence of a deployed cluster. Component stages without complete implementation must fail closed. See `docs/IMPLEMENTATION-STATUS.md`.
-
-
-### PKI credential delivery
-
-The default `distribute-pki` command is preview-only. For a real transfer, provision `config/known_hosts` out of band, set `DRY_RUN=false`, then run:
-
-```bash
-bin/deploy-step.sh --config cluster.env --apply distribute-pki
-```
-
-Private keys are streamed through authenticated SSH stdin to a mode-0600 temporary file, checked remotely by SHA256, and atomically renamed. Remote PKI directories are mode 0700. SCP/SFTP/rsync and the Caddy artifact server are not used for sensitive files. Root CA private keys and the admin credential stay on the installation node.
+A successful config validation or plan is not evidence of a deployed cluster. See `docs/IMPLEMENTATION-STATUS.md`. M5 code has not yet been validated on a real Rocky Linux 9 multi-member cluster.

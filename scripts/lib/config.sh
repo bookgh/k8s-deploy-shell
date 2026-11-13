@@ -49,7 +49,7 @@ ks_config_load() {
     [[ $line == *=* ]] || { ks_log ERROR "Invalid config line $lineno"; return 2; }
     key=${line%%=*}; value=${line#*=}
     case $key in
-      CLUSTER_NAME|INSTALL_NODE_ADVERTISE_ADDR|ARTIFACT_HTTP_PORT|ARTIFACT_HTTP_ROOT|INSTALL_ROOT|REMOTE_INSTALL_ROOT|SSH_USER|SSH_PORT|SSH_CONNECT_TIMEOUT|SSH_RETRIES|SSH_BACKOFF_SECONDS|SSH_KNOWN_HOSTS_FILE|NODE_INVENTORY_FILE|POD_CIDR|SERVICE_CIDR|CLUSTER_DNS|KUBERNETES_SERVICE_IP|CLUSTER_DOMAIN|PKI_ROOT|OUTPUT_ROOT|RUNTIME|KUBE_PROXY_MODE|IMAGE_MODE|ENABLE_HARBOR|ENABLE_FIREWALL_CONFIG|DISABLE_SELINUX|DRY_RUN|MASTERS|WORKERS|ETCD_NODES) ;;
+      CLUSTER_NAME|INSTALL_NODE_ADVERTISE_ADDR|ARTIFACT_HTTP_PORT|ARTIFACT_HTTP_ROOT|INSTALL_ROOT|REMOTE_INSTALL_ROOT|SSH_USER|SSH_PORT|SSH_CONNECT_TIMEOUT|SSH_RETRIES|SSH_BACKOFF_SECONDS|SSH_KNOWN_HOSTS_FILE|NODE_INVENTORY_FILE|POD_CIDR|SERVICE_CIDR|CLUSTER_DNS|KUBERNETES_SERVICE_IP|CLUSTER_DOMAIN|PKI_ROOT|OUTPUT_ROOT|RUNTIME|KUBE_PROXY_MODE|IMAGE_MODE|ENABLE_HARBOR|ENABLE_FIREWALL_CONFIG|DISABLE_SELINUX|DRY_RUN|MASTERS|WORKERS|ETCD_NODES|ETCD_DATA_DIR|ETCD_CONFIG_DIR|ETCD_BACKUP_DIR|ETCD_CLIENT_PORT|ETCD_PEER_PORT|ETCD_LOG_LEVEL|ETCD_AUTO_COMPACTION_RETENTION) ;;
       *) ks_log ERROR "Unknown config key at line $lineno: $key"; return 2 ;;
     esac
     [[ -z ${seen[$key]+present} ]] || { ks_log ERROR "Duplicate config key at line $lineno: $key"; return 2; }
@@ -64,12 +64,15 @@ ks_config_validate() {
   local key node
   local -a masters=() workers=() etcd=()
   local -A master_set=() worker_set=() etcd_set=()
-  for key in CLUSTER_NAME INSTALL_NODE_ADVERTISE_ADDR ARTIFACT_HTTP_PORT SSH_USER SSH_PORT SSH_CONNECT_TIMEOUT SSH_RETRIES SSH_BACKOFF_SECONDS SSH_KNOWN_HOSTS_FILE NODE_INVENTORY_FILE POD_CIDR SERVICE_CIDR CLUSTER_DNS KUBERNETES_SERVICE_IP CLUSTER_DOMAIN PKI_ROOT OUTPUT_ROOT RUNTIME KUBE_PROXY_MODE IMAGE_MODE ENABLE_HARBOR ENABLE_FIREWALL_CONFIG DISABLE_SELINUX DRY_RUN MASTERS WORKERS ETCD_NODES; do
+  for key in CLUSTER_NAME INSTALL_NODE_ADVERTISE_ADDR ARTIFACT_HTTP_PORT SSH_USER SSH_PORT SSH_CONNECT_TIMEOUT SSH_RETRIES SSH_BACKOFF_SECONDS SSH_KNOWN_HOSTS_FILE NODE_INVENTORY_FILE POD_CIDR SERVICE_CIDR CLUSTER_DNS KUBERNETES_SERVICE_IP CLUSTER_DOMAIN PKI_ROOT OUTPUT_ROOT RUNTIME KUBE_PROXY_MODE IMAGE_MODE ENABLE_HARBOR ENABLE_FIREWALL_CONFIG DISABLE_SELINUX DRY_RUN MASTERS WORKERS ETCD_NODES ETCD_DATA_DIR ETCD_CONFIG_DIR ETCD_BACKUP_DIR ETCD_CLIENT_PORT ETCD_PEER_PORT ETCD_LOG_LEVEL ETCD_AUTO_COMPACTION_RETENTION; do
     [[ -n ${!key:-} ]] || { ks_log ERROR "Missing config key: $key"; return 2; }
   done
   [[ $CLUSTER_NAME =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$ ]] || { ks_log ERROR 'Invalid cluster name'; return 2; }
   [[ $ARTIFACT_HTTP_PORT =~ ^[0-9]{1,5}$ ]] && ((10#$ARTIFACT_HTTP_PORT > 0 && 10#$ARTIFACT_HTTP_PORT < 65536)) || return 2
   [[ $SSH_PORT =~ ^[0-9]{1,5}$ ]] && ((10#$SSH_PORT > 0 && 10#$SSH_PORT < 65536)) || return 2
+  [[ $ETCD_CLIENT_PORT =~ ^[0-9]{1,5}$ ]] && ((10#$ETCD_CLIENT_PORT > 0 && 10#$ETCD_CLIENT_PORT < 65536)) || return 2
+  [[ $ETCD_PEER_PORT =~ ^[0-9]{1,5}$ ]] && ((10#$ETCD_PEER_PORT > 0 && 10#$ETCD_PEER_PORT < 65536)) || return 2
+  ((ETCD_CLIENT_PORT != ETCD_PEER_PORT)) || return 2
   [[ $SSH_CONNECT_TIMEOUT =~ ^[0-9]+$ && $SSH_RETRIES =~ ^[0-9]+$ && $SSH_BACKOFF_SECONDS =~ ^[0-9]+$ ]] || return 2
   ((10#$SSH_CONNECT_TIMEOUT >= 1 && 10#$SSH_CONNECT_TIMEOUT <= 120 && 10#$SSH_RETRIES >= 1 && 10#$SSH_RETRIES <= 10 && 10#$SSH_BACKOFF_SECONDS <= 30)) || return 2
   [[ $SSH_USER =~ ^[a-z_][a-zA-Z0-9_-]*[$]?$ ]] || return 2
@@ -82,19 +85,18 @@ ks_config_validate() {
   [[ $DRY_RUN == true || $DRY_RUN == false ]] || return 2
   [[ $INSTALL_NODE_ADVERTISE_ADDR =~ ^[A-Za-z0-9.-]+$ && $CLUSTER_DOMAIN =~ ^[A-Za-z0-9.-]+$ ]] || return 2
   [[ $SSH_KNOWN_HOSTS_FILE != *[[:space:]]* && $NODE_INVENTORY_FILE != *[[:space:]]* && $PKI_ROOT != *[[:space:]]* && $OUTPUT_ROOT != *[[:space:]]* && $ARTIFACT_HTTP_ROOT == /var/lib/k8s-deploy-shell/artifacts/* && $INSTALL_ROOT != *[[:space:]]* && $REMOTE_INSTALL_ROOT != *[[:space:]]* ]] || { ks_log ERROR "ARTIFACT_HTTP_ROOT must be under /var/lib/k8s-deploy-shell/artifacts"; return 2; }
+  for key in ETCD_DATA_DIR ETCD_CONFIG_DIR ETCD_BACKUP_DIR; do
+    [[ ${!key} =~ ^/[A-Za-z0-9._/-]+$ && ${!key} != *'/../'* && ${!key} != */.. && ${!key} != / ]] || { ks_log ERROR "Unsafe absolute path in $key"; return 2; }
+  done
+  [[ $ETCD_LOG_LEVEL == info || $ETCD_LOG_LEVEL == warn || $ETCD_LOG_LEVEL == error || $ETCD_LOG_LEVEL == debug ]] || return 2
+  [[ $ETCD_AUTO_COMPACTION_RETENTION =~ ^[0-9]+[hms]$ ]] || return 2
   ks_cidr_parse "$POD_CIDR" || { ks_log ERROR "Invalid POD_CIDR: $POD_CIDR"; return 2; }
   ks_cidr_parse "$SERVICE_CIDR" || { ks_log ERROR "Invalid SERVICE_CIDR: $SERVICE_CIDR"; return 2; }
-  if ks_cidr_overlaps "$POD_CIDR" "$SERVICE_CIDR"; then
-    ks_log ERROR 'POD_CIDR overlaps SERVICE_CIDR'; return 2
-  else
-    local rc=$?; ((rc == 1)) || return "$rc"
-  fi
-  ks_ip_in_cidr "$CLUSTER_DNS" "$SERVICE_CIDR" || { ks_log ERROR 'CLUSTER_DNS must be a valid address inside SERVICE_CIDR'; return 2; }
+  if ks_cidr_overlaps "$POD_CIDR" "$SERVICE_CIDR"; then ks_log ERROR 'POD_CIDR overlaps SERVICE_CIDR'; return 2; else local rc=$?; ((rc == 1)) || return "$rc"; fi
+  ks_ip_in_cidr "$CLUSTER_DNS" "$SERVICE_CIDR" || { ks_log ERROR 'CLUSTER_DNS must be inside SERVICE_CIDR'; return 2; }
   ks_ip_in_cidr "$KUBERNETES_SERVICE_IP" "$SERVICE_CIDR" || { ks_log ERROR 'KUBERNETES_SERVICE_IP must be inside SERVICE_CIDR'; return 2; }
-  [[ $KUBERNETES_SERVICE_IP != "$CLUSTER_DNS" ]] || { ks_log ERROR 'KUBERNETES_SERVICE_IP and CLUSTER_DNS must differ'; return 2; }
-  if [[ $INSTALL_NODE_ADVERTISE_ADDR =~ ^[0-9.]+$ ]]; then
-    ks_ipv4_to_int "$INSTALL_NODE_ADVERTISE_ADDR" || { ks_log ERROR 'Invalid INSTALL_NODE_ADVERTISE_ADDR IPv4'; return 2; }
-  fi
+  [[ $KUBERNETES_SERVICE_IP != "$CLUSTER_DNS" ]] || return 2
+  if [[ $INSTALL_NODE_ADVERTISE_ADDR =~ ^[0-9.]+$ ]]; then ks_ipv4_to_int "$INSTALL_NODE_ADVERTISE_ADDR" || return 2; fi
   IFS=$' ,\t' read -r -a masters <<< "$MASTERS"
   IFS=$' ,\t' read -r -a workers <<< "$WORKERS"
   IFS=$' ,\t' read -r -a etcd <<< "$ETCD_NODES"
@@ -106,8 +108,7 @@ ks_config_validate() {
   done
   for node in "${workers[@]}"; do
     [[ $node =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 2
-    [[ -z ${worker_set[$node]+present} ]] || { ks_log ERROR "Duplicate worker: $node"; return 2; }
-    [[ -z ${master_set[$node]+present} ]] || { ks_log ERROR "Node has both Master and Worker roles: $node"; return 2; }
+    [[ -z ${worker_set[$node]+present} && -z ${master_set[$node]+present} ]] || { ks_log ERROR "Duplicate or cross-role node: $node"; return 2; }
     worker_set[$node]=1
   done
   for node in "${etcd[@]}"; do

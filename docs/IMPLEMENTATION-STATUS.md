@@ -5,26 +5,22 @@ This record distinguishes implemented local tooling from component deployment th
 | Area | Status | Evidence / limitation |
 |---|---|---|
 | M0 repository skeleton | Partial | Layout, ignore rules, CI and tests exist; shfmt still reports formatting differences as a non-blocking warning |
-| M1 configuration/common library | Partial | Allowlisted non-executing parser; duplicate/unknown key rejection; IPv4 CIDR overlap and DNS membership checks; node role/etcd odd-membership validation; retry/lock/atomic-write/backup/SHA256 helpers; dry-run propagated to artifact preparation. Node IP/role/SSH inventory is now validated; full CIDR collision against node subnets, complete schema and broader concurrency/failure tests remain |
-| M2 artifacts/Caddy | Partial | HTTPS-only TSV manifest with pinned Caddy 2.11.9 and CFSSL 1.7.1 assets, SHA256 verification, cache verification, Rocky 9/amd64 preflight and guarded Caddy Systemd installer. No production artifact has been downloaded or Caddy installed; RPM/Chart/image closure remains |
-| M3 system/SSH | Partial | Strict HostKey SSH wrapper, node inventory, remote Rocky 9/amd64 read-only check, and SSH-stdin file delivery with remote SHA256 verification and atomic rename; no real target-node integration or Rocky 9 apply workflow |
-| M4 PKI | Partial | CFSSL 1.7.1 generates three independent root CAs (876024h), ServiceAccount keypair, API Server/control-plane clients, per-node kubelet client/serving, per-etcd-member server/peer, etcd clients and front-proxy client certificates. SANs, EKUs, key matches, modes and 876000h leaf validity are verified. SSH delivery workflow is implemented but has dry-run coverage only; rotation and recovery remain |
-| M5 etcd | Not implemented | No member lifecycle, systemd deployment, mTLS rollout or snapshot restore |
-| M6 control plane | Not implemented | No component deployment, kubeconfig generation or HA validation |
+| M1 configuration/common library | Partial | Allowlisted non-executing parser; duplicate/unknown key rejection; IPv4 CIDR checks; etcd ports/paths/log policy; node inventory validation; broader subnet collision and failure-injection coverage remain |
+| M2 artifacts/Caddy | Partial | HTTPS-only TSV manifest; pinned Caddy 2.11.9, CFSSL 1.7.1 and etcd 3.7.3 artifacts with SHA256; cache verification and guarded Caddy Systemd installer; no real Rocky 9 installation or full RPM/Chart/image closure |
+| M3 system/SSH | Partial | Strict HostKey SSH wrapper, node inventory, remote Rocky 9/amd64 read-only check, SSH-stdin PKI delivery; system initialization apply remains blocked pending role firewall/SELinux integration tests |
+| M4 PKI | Partial | Three independent root CAs, ServiceAccount keypair, API/control-plane/kubelet/etcd/front-proxy leaf certificates, SAN/EKU/key/validity checks; rotation/recovery and real-node distribution not validated |
+| M5 etcd | Partial | Pinned etcd 3.7.3 binary, mTLS Systemd bootstrap, dedicated etcd identity, existing-data fail-closed guard, health/member-list/snapshot commands and Bats coverage; real Rocky 9 multi-member quorum, snapshot restore and failure recovery remain NOT VERIFIED |
+| M6 control plane | Not implemented | No API Server/controller/scheduler deployment, kubeconfig generation or HA validation |
 | M7 runtime/kubelet/proxy | Not implemented | No containerd/kubelet/kube-proxy/Nginx failover deployment |
-| M8 Harbor/Addons | Not implemented | Chart versions and image closure are intentionally unpinned |
-| M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; live checks and safe cleanup remain |
+| M8 Harbor/Addons | Not implemented | Chart versions and image closure are unpinned |
+| M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; full live checks and safe cleanup remain |
 | M10 upgrade/recovery | Not implemented | No upgrade/rollback workflow |
 | M11 release | Partial | CI checks only; no verified offline bundle or release workflow |
 
 ## Verification record
 
-GitHub Actions run for commit `b3e544c2beaaa2bf3f149605e841dceeb9630bf8`: **success**.
+The latest verified pre-M5 commit `7c2a7a7b8d4df7f53ae8a3dd33deb3a19d36b695` passed GitHub Actions (Bash syntax, ShellCheck, Bats, forbidden-language scan, and CFSSL integration tests). M5 changes are pending their own CI run.
 
-- Bash syntax: passed.
-- ShellCheck: passed.
-- Bats: passed (27 tests), including actual CFSSL 1.7.1 root/leaf certificate generation, SAN/EKU checks, key permissions, and 100-year validity in a disposable CI directory. SSH file delivery is tested in dry-run only.
-- Forbidden-language file/invocation scan: passed.
-- shfmt: executed and reported formatting differences; currently warning-only, not a blocking gate.
+etcd 3.7.3 was selected as the current etcd 3.7 patch release. Its official release asset SHA256 is `5dfa9cc3b3ce3b4b491fbcc2057d3daa166bcc6676f743fcd20f8e5760cb9775`. Kubernetes 1.37 release notes for kOps state that 1.37 clusters default to etcd 3.7.3; this is compatibility evidence, not a Kubernetes upstream normative pin. The etcd v3.7 upgrade guide documents breaking changes; this implementation only bootstraps a new cluster and does not perform upgrades.
 
-M2/M3/M4 code passed Bash syntax, ShellCheck, Bats and forbidden-language scan. The CI PKI integration test downloads the pinned CFSSL binaries, verifies their SHA256, generates throwaway CA material in the runner, and does not touch a real cluster. No Rocky Linux 9 target host, SSH node inventory, certificate issuance, etcd restore, container runtime, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. Those remain NOT VERIFIED. No production CA was generated and no real cluster was modified.
+No Rocky Linux 9 target cluster, etcd quorum, snapshot restore, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. No production CA was generated and no real cluster was modified.
