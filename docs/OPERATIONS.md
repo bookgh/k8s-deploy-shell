@@ -5,7 +5,7 @@
 1. 复制 `cluster.env.example` 为 `cluster.env`，逐项替换所有示例值。
 2. 将 `CONTROL_PLANE_ENDPOINT` 设置为外部 L4 VIP/负载均衡器 DNS 名称；非 HA 集群可设置为单个 Master 地址。将 `CONTROL_PLANE_PORT` 设置为 API 端口。该入口会写入 API Server 证书 SAN。
 3. 复制 `config/nodes.tsv.example` 为 `config/nodes.tsv`，填写每个节点的地址、SSH 用户和端口，并在 `cluster.env` 中更新 `NODE_INVENTORY_FILE`。节点 SSH Host Key 必须通过带外可信渠道获取。
-4. 配置专用的 known_hosts 文件；必须启用严格 Host Key 校验。
+4. 配置专用的 known_hosts 文件；必须通过带外可信渠道录入 Host Key。文件必须是可读普通文件，不得为符号链接；SSH 用户、端口、超时、重试次数和退避值须通过配置校验。
 5. 在 `artifacts/manifest.tsv` 中填写不可变 HTTPS 地址及独立核验的 SHA256。
 6. 完成兼容性和镜像闭包验证后，锁定组件及 Helm Chart 版本。
 7. 依次执行 `bin/install.sh --config cluster.env validate`、`preflight` 和 `plan`。
@@ -27,7 +27,7 @@ bin/deploy-step.sh --config cluster.env etcd-members
 bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-示例配置默认 `DRY_RUN=true)，并将该设置传递给制品准备和部署步骤入口。命令行 `--dry-run` 可强制进入预览模式。Dry-run 不得创建缓存目录、锁文件、临时文件或密钥，不得建立 SSH 连接，也不得修改主机状态。
+示例配置默认 `DRY_RUN=true`，并将该设置传递给制品准备和部署步骤入口。命令行 `--dry-run` 可强制进入预览模式。Dry-run 不得创建缓存目录、锁文件、临时文件或密钥，不得建立 SSH 连接，也不得修改主机状态。
 
 `prepare` 是在线制品获取阶段，要求制品清单完整，只接受 HTTPS 来源并执行 SHA256 校验。只有明确设置 `DRY_RUN=false` 才会下载制品。完成后执行 `scripts/00-prepare-install-node.sh --config cluster.env verify-cache`，并检查 Caddy 配置预览。安装 Caddy 同样要求 `DRY_RUN=false` 和显式 `--apply`。
 
@@ -76,13 +76,13 @@ bin/deploy-step.sh --config cluster.env etcd-snapshot
    bin/deploy-step.sh runtime --config cluster.env --dry-run
    ```
 
-5. 如需实际部署，必须在 `cluster.env` 中显式设置 `DRY_RUN=false)，然后执行：
+5. 如需实际部署，必须在 `cluster.env` 中显式设置 `DRY_RUN=false`，然后执行：
 
    ```bash
    bin/deploy-step.sh runtime --config cluster.env --apply
    ```
 
-该阶段不会拉取容器镜像、配置 Calico、启动 kubelet/kube-proxy，也不会安装 Worker Nginx stream 代理。pause 镜像已在 `versions.yaml` 中锁定，启动工作负载前必须将其纳入后续经过校验的镜像导入闭包。安装程序拒绝替换内容不同的现有 containerd 二进制或配置；升级必须走独立升级流程。
+该阶段不会拉取容器镜像或配置 Calico，也不会启动 kubelet/kube-proxy；Worker Nginx stream 代理由独立的 `build-nginx` / `worker-proxy` 步骤构建和部署。pause 镜像已在 `versions.yaml` 中锁定，启动工作负载前必须将其纳入后续经过校验的镜像导入闭包。安装程序拒绝替换内容不同的现有 containerd 二进制或配置；升级必须走独立升级流程。
 
 ## 六、kubelet 与 kube-proxy 准备（M7，部分完成）
 
@@ -104,7 +104,7 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 bin/deploy-step.sh --config cluster.env --dry-run build-nginx
 ```
 
-审核计划后，在 `cluster.env` 中设置 `DRY_RUN=false)，再执行 `bin/deploy-step.sh --config cluster.env --apply build-nginx`。生成的归档及其 SHA256/来源记录写入仅保留在本地的 `state/generated-artifacts.tsv`。
+审核计划后，在 `cluster.env` 中设置 `DRY_RUN=false`，再执行 `bin/deploy-step.sh --config cluster.env --apply build-nginx`。生成的归档及其 SHA256/来源记录写入仅保留在本地的 `state/generated-artifacts.tsv`。
 
 然后向 Worker 部署代理：
 
@@ -130,7 +130,7 @@ bin/deploy-step.sh --config cluster.env addons verify
 
 ## 九、M9 集群验收报告（只读）
 
-仅当集群已按计划启动且允许执行认证检查时，才设置 `DRY_RUN=false)，然后运行：
+仅当集群已按计划启动且允许执行认证检查时，才设置 `DRY_RUN=false`，然后运行：
 
 ```bash
 bin/deploy-step.sh --config cluster.env verify
@@ -140,7 +140,7 @@ bin/deploy-step.sh --config cluster.env verify
 
 ## 十、清理（仅停止服务）
 
-使用 `bin/deploy-step.sh --config cluster.env cleanup` 预览清理计划。若要停止 Kubernetes 服务，必须设置 `DRY_RUN=false)，并显式向 `scripts/13-clean-cluster.sh stop` 传入 `--apply`。清理命令不会删除 etcd、containerd、PKI、kubeconfig、Harbor 或工作负载数据。`delete-data` 当前被阻断。
+使用 `bin/deploy-step.sh --config cluster.env cleanup` 预览清理计划。若要停止 Kubernetes 服务，必须设置 `DRY_RUN=false`，并显式向 `scripts/13-clean-cluster.sh stop` 传入 `--apply`。清理命令不会删除 etcd、containerd、PKI、kubeconfig、Harbor 或工作负载数据。`delete-data` 当前被阻断。
 
 ## 十一、升级规划与离线包
 
