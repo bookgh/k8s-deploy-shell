@@ -1,7 +1,8 @@
 # 安全模型
 
 - 配置文件和节点清单仅作为数据读取，禁止 source 或 eval。
-- SSH 必须启用 BatchMode 和 StrictHostKeyChecking，并使用专用 known_hosts 文件。
+- SSH 必须启用 BatchMode 和 StrictHostKeyChecking，并使用专用 known_hosts 文件；连接前验证 SSH 用户、端口、连接超时、重试次数和退避范围。
+- known_hosts 必须是可读的普通文件，拒绝符号链接，避免信任文件路径被意外重定向。
 - 制品 HTTP 根目录只能包含非敏感、不可变的制品。
 - 私钥和 kubeconfig 绝不能进入 Git、日志或 HTTP 根目录。
 - 已有非空 CA/PKI 目录必须导致硬失败，禁止隐式覆盖。
@@ -15,5 +16,7 @@
 - 防火墙规则不得全局清空或关闭。
 - Dry-run 必须避免文件系统、网络、锁和系统状态副作用。
 - etcd 恢复、成员变更、证书轮换、升级和数据删除必须使用单独审核并明确确认的操作流程。
+
+SSH 包装器仅接受受限字符集的远端命令参数，不允许空格、Shell 元字符或未验证的动态命令片段进入远端命令字符串。SSH 参数在执行前进行独立校验，不能只依赖配置文件入口校验。
 
 叶证书私钥仅通过启用严格 Host Key 校验的 SSH stdin 传输。远端将数据写入权限为 0600 的临时文件，校验 SHA256 后原子重命名；PKI 所在目录权限为 0700。私钥不通过 SCP/SFTP/rsync 或 Caddy HTTP 传输。根 CA 私钥和 admin 私钥始终保留在安装节点。
