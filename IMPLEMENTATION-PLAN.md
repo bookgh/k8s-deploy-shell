@@ -63,7 +63,7 @@ etcd 成员变更不得清空数据目录；快照必须能够在隔离环境恢
 状态以 `docs/IMPLEMENTATION-STATUS.md` 为准。截至 2026-11-13：
 
 - M0–M4 已有部分工具实现。M4 包含 Kubernetes Root CA 和 pathLen=0 intermediate signer，但证书轮换/恢复及真实节点分发仍未完成。
-- M5 已有 etcd 3.7.3 新集群 bootstrap、mTLS、Systemd、健康/成员/快照命令和自动化测试；真实 Rocky Linux 9 集群验证与恢复演练未完成。
+- M5 已有 etcd 3.7.3 新集群 bootstrap、mTLS、Systemd、健康/成员/快照命令，以及本地 restore-preflight 清单校验和回归用例；完整快照恢复事务、etcdutl 元数据交叉校验、真实 Rocky Linux 9 集群恢复演练未完成。
 - M6 已有控制平面部署与 kubeconfig 入口；HA 控制面滚动部署和实时 API 验证未完成。
 - M7 已有 containerd CRI、kubelet/kube-proxy、Nginx Worker loopback 代理入口；真实节点服务激活和故障恢复未验证。
 - M8 已有固定版本 Calico/CoreDNS/NodeLocal Chart 和本地镜像导入入口；镜像闭包及真实集群验证未完成。
