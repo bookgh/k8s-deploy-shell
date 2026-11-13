@@ -85,3 +85,6 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 
 
 本节 11 项 Bats 用例在初次集成时发现测试文件重复块和缺少 `etcd.sh` 测试依赖加载；已分别清理并补齐。最近修复提交为 `a220c54e5b4f5afae3efc5118873fa69d8ca3ee8`。之前 Shell CI run #113 的失败源于上述测试夹具问题，不能作为当前代码通过证据；修复后必须以最新 CI 运行结果为准。
+
+
+随后 Shell CI #115 进一步发现 CLI 集成测试从 TSV 第 3 列误读 etcd 版本（该清单第 2 列才是版本）；已修正为读取第 2 列，提交 `10d6f405ae5af19c87e6f080aada25c9480cdb0e`。CLI 预检集成测试仍以修复后最新 CI 结果为准。
