@@ -7,6 +7,9 @@ setup() {
     : > "$STAGE/$file"
   done
   printf 'name\tversion\tarch\turl\tsha256\tfilename\n' > "$STAGE/artifacts/manifest.tsv"
+  printf 'test-artifact.bin\n' > "$STAGE/artifacts/cache/test-artifact.bin"
+  MANIFEST_SHA="$(sha256sum "$STAGE/artifacts/cache/test-artifact.bin" | awk '{print $1}')"
+  printf 'test-artifact\t1.0.0\tamd64\thttps://example.invalid/test-artifact\t%s\ttest-artifact.bin\n' "$MANIFEST_SHA" >> "$STAGE/artifacts/manifest.tsv"
   printf 'name\treference\tdigest\tarchive\tarchive_sha256\tplatform\n' > "$STAGE/images.lock.tsv"
   printf 'fake image archive\n' > "$STAGE/artifacts/cache/test-image.tar"
   ARCHIVE_SHA="$(sha256sum "$STAGE/artifacts/cache/test-image.tar" | awk '{print $1}')"
