@@ -74,7 +74,7 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官方源码归档构建。Worker 代理仅监听 `127.0.0.1:<CONTROL_PLANE_PORT>`，并将 TCP 流量转发至配置的 Master；TLS 仍由 API Server 终止。本项目不宣称开源 Nginx 具备主动健康检查能力。
 
 
-## M8 Addons (partial)
+## M8 插件组件（部分完成）
 
 Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.37 tested, stable `crd.projectcalico.org.v1` CRDs and pinned operator/node/CNI/typha image set), CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
 
