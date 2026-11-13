@@ -8,10 +8,15 @@ cfssl:
 caddy:
   version: "2.11.9"
 containerd:
-  version: ""
+  version: "2.3.7"
 runc:
-  version: ""
+  version: "1.5.2"
 helm:
-  version: ""
+  version: "4.3.1"
 nginx:
   version: ""
+cni_plugins:
+  version: "1.10.0"
+sandbox_image:
+  repository: registry.k8s.io/pause
+  tag: "3.10.1"
