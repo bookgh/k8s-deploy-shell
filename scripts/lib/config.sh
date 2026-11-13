@@ -88,6 +88,9 @@ ks_config_validate() {
   for key in ETCD_DATA_DIR ETCD_CONFIG_DIR ETCD_BACKUP_DIR; do
     [[ ${!key} =~ ^/[A-Za-z0-9._/-]+$ && ${!key} != *'/../'* && ${!key} != */.. && ${!key} != / ]] || { ks_log ERROR "Unsafe absolute path in $key"; return 2; }
   done
+  [[ $ETCD_DATA_DIR != "$ETCD_CONFIG_DIR" && $ETCD_DATA_DIR != "$ETCD_CONFIG_DIR/"* && $ETCD_CONFIG_DIR != "$ETCD_DATA_DIR/"* ]] || { ks_log ERROR 'ETCD_DATA_DIR and ETCD_CONFIG_DIR must not overlap'; return 2; }
+  [[ $ETCD_BACKUP_DIR != "$ETCD_DATA_DIR" && $ETCD_BACKUP_DIR != "$ETCD_DATA_DIR/"* && $ETCD_DATA_DIR != "$ETCD_BACKUP_DIR/"* && $ETCD_BACKUP_DIR != "$ETCD_CONFIG_DIR" && $ETCD_BACKUP_DIR != "$ETCD_CONFIG_DIR/"* && $ETCD_CONFIG_DIR != "$ETCD_BACKUP_DIR/"* ]] || { ks_log ERROR 'ETCD_BACKUP_DIR must be separate from data and config paths'; return 2; }
+  [[ $ETCD_BACKUP_DIR != "$ARTIFACT_HTTP_ROOT" && $ETCD_BACKUP_DIR != "$ARTIFACT_HTTP_ROOT/"* ]] || { ks_log ERROR 'ETCD_BACKUP_DIR must never be inside the public artifact root'; return 2; }
   [[ $ETCD_LOG_LEVEL == info || $ETCD_LOG_LEVEL == warn || $ETCD_LOG_LEVEL == error || $ETCD_LOG_LEVEL == debug ]] || return 2
   [[ $ETCD_AUTO_COMPACTION_RETENTION =~ ^[0-9]+[hms]$ ]] || return 2
   ks_cidr_parse "$POD_CIDR" || { ks_log ERROR "Invalid POD_CIDR: $POD_CIDR"; return 2; }

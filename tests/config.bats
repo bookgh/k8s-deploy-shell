@@ -75,3 +75,14 @@ setup() {
   run ks_config_validate
   [ "$status" -ne 0 ]
 }
+
+@test "etcd data and config directories cannot overlap" {
+  sed 's#ETCD_CONFIG_DIR=/etc/etcd#ETCD_CONFIG_DIR=/var/lib/etcd/config#' "$TMP" > "$BATS_TEST_TMPDIR/overlap.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/overlap.env"
+  [ "$status" -ne 0 ]
+}
+@test "etcd backup cannot be inside public artifact root" {
+  sed 's#ETCD_BACKUP_DIR=/var/backups/etcd#ETCD_BACKUP_DIR=/var/lib/k8s-deploy-shell/artifacts/cache/backup#' "$TMP" > "$BATS_TEST_TMPDIR/public-backup.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/public-backup.env"
+  [ "$status" -ne 0 ]
+}
