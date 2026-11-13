@@ -20,7 +20,10 @@ ETCD_LOG_LEVEL=${14}
 ETCD_AUTO_COMPACTION_RETENTION=${15}
 
 [[ $EUID -eq 0 ]] || exec sudo -n bash "$0" "$@"
-for command_name in curl tar sha256sum systemctl install find cmp stat id getent useradd groupadd chown chmod mv cp mktemp date grep sed tr bash; do
+install -d -o root -g root -m 0755 /run/lock
+exec 9>/run/lock/ks-deploy-shell-etcd.lock
+flock -n 9 || { echo 'Another etcd operation is already running on this node' >&2; exit 75; }
+for command_name in curl tar sha256sum systemctl install find cmp stat id getent useradd groupadd chown chmod mv cp mktemp date grep sed tr bash flock; do
   command -v "$command_name" >/dev/null 2>&1 || { echo "Missing remote command: $command_name" >&2; exit 127; }
 done
 [[ $ETCD_VERSION == 3.7.3 && $ETCD_FILE == "etcd-v$ETCD_VERSION-linux-amd64.tar.gz" ]] || exit 2
