@@ -117,7 +117,7 @@ The Worker listener is restricted to `127.0.0.1:<CONTROL_PLANE_PORT>`; Nginx use
 
 ## Addons M8 (partial / guarded)
 
-M8 uses pinned charts and a local NodeLocal DNSCache chart. The current implementation supports only `IMAGE_MODE=local-import`; Harbor and online image modes are intentionally blocked. Create `images.lock.tsv` from the example only after rendering all charts and auditing all operator-generated images. Each image row must contain repository:tag, OCI digest, archive filename, archive SHA256 and linux/amd64. Copy verified archives into the Caddy cache, then run:
+M8 uses pinned charts and a local NodeLocal DNSCache chart. The current implementation supports only `IMAGE_MODE=local-import`; Harbor and online image modes are intentionally blocked. Calico 3.33 consolidates the node/CNI/controllers/Typha image family into `quay.io/calico/calico:v3.33.0`; do not populate obsolete per-component image references. Create `images.lock.tsv` from the example only after rendering all charts and auditing all operator-generated images. Each image row must contain repository:tag, OCI digest, archive filename, archive SHA256 and linux/amd64. Copy verified archives into the Caddy cache, then run:
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run addons

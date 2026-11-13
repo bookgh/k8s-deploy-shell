@@ -22,3 +22,11 @@ setup() {
   run ks_images_validate "$TMP"
   [ "$status" -ne 0 ]
 }
+
+@test "image lock enforces exact versioned reference" {
+  printf 'name\treference\tdigest\tarchive\tarchive_sha256\tplatform\ncalico\tquay.io/calico/calico:v3.33.0\tsha256:%064d\tcalico.tar.gz\t%s\tlinux/amd64\n' 0 "$(printf x | sha256sum | awk '{print $1}')" > "$TMP"
+  run ks_images_require_ref "$TMP" calico quay.io/calico/calico:v3.33.0
+  [ "$status" -eq 0 ]
+  run ks_images_require_ref "$TMP" calico docker.io/calico/node:v3.33.0
+  [ "$status" -ne 0 ]
+}

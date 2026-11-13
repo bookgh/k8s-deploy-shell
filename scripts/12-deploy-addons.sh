@@ -41,12 +41,15 @@ if [[ ! -f $ROOT/images.lock.tsv || -L $ROOT/images.lock.tsv ]]; then
   exit 78
 fi
 ks_images_validate "$ROOT/images.lock.tsv"
-ks_images_require "$ROOT/images.lock.tsv" calico-operator calico-node calico-cni calico-kube-controllers coredns node-local-dns
+ks_images_require_ref "$ROOT/images.lock.tsv" calico-operator quay.io/tigera/operator:v1.44.0
+ks_images_require_ref "$ROOT/images.lock.tsv" calico quay.io/calico/calico:v3.33.0
+ks_images_require_ref "$ROOT/images.lock.tsv" coredns registry.k8s.io/coredns/coredns:1.14.7
+ks_images_require_ref "$ROOT/images.lock.tsv" node-local-dns registry.k8s.io/dns/k8s-dns-node-cache:1.26.8
 ks_addon_artifact helm "$(ks_yaml_scalar "$ROOT/versions.yaml" helm version)" "https://get.helm.sh/helm-v3.22.1-linux-amd64.tar.gz"
 HELM_ARCHIVE=$REPLY; HELM_SHA=$KS_ADDON_SHA
 ks_addon_artifact calico-operator-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz"
 CALICO_CHART=$REPLY; CALICO_CHART_SHA=$KS_ADDON_SHA
-ks_addon_artifact calico-crds-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico crd_version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/crd.projectcalico.org.v1-v3.33.0.tgz"
+ks_addon_artifact calico-crds-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico crd_version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/projectcalico.org.v3-v3.33.0.tgz"
 CALICO_CRD_CHART=$REPLY; CALICO_CRD_SHA=$KS_ADDON_SHA
 ks_addon_artifact coredns-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" coredns version)" "https://github.com/coredns/helm/releases/download/coredns-1.48.2/coredns-1.48.2.tgz"
 COREDNS_CHART=$REPLY; COREDNS_CHART_SHA=$KS_ADDON_SHA
@@ -73,7 +76,7 @@ fi
 [[ ${KS_DRY_RUN:-true} == false ]] || { ks_log ERROR 'Set DRY_RUN=false before --apply'; exit 2; }
 [[ -r $SSH_KNOWN_HOSTS_FILE ]] || { ks_log ERROR "Known hosts file missing: $SSH_KNOWN_HOSTS_FILE"; exit 2; }
 ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"
-for cmd in curl helm kubectl flock; do ks_require_cmd "$cmd"; done
+for cmd in curl flock tar grep awk stat install cp chmod rm mktemp realpath sha256sum; do ks_require_cmd "$cmd"; done
 [[ -f $OUTPUT_PATH/kubeconfig/admin.kubeconfig && ! -L $OUTPUT_PATH/kubeconfig/admin.kubeconfig ]] || { ks_log ERROR 'M6 admin kubeconfig missing'; exit 78; }
 [[ $(stat -c '%a' "$OUTPUT_PATH/kubeconfig/admin.kubeconfig") == 600 ]] || { ks_log ERROR 'Admin kubeconfig must be mode 0600'; exit 2; }
 KUBECTL=$OUTPUT_PATH/bin/kubectl
@@ -127,15 +130,10 @@ while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
 done < "$NODE_INVENTORY_FILE"
 KUBECONFIG=$OUTPUT_PATH/kubeconfig/admin.kubeconfig
 "$KUBECTL" --kubeconfig "$KUBECONFIG" get --raw=/readyz >/dev/null
-"$HELM" template calico-crds "$CACHE_ROOT/$CALICO_CRD_CHART" --namespace tigera-operator | "$KUBECTL" --kubeconfig "$KUBECONFIG" apply --server-side --force-conflicts -f -
+"$HELM" template calico-crds "$CACHE_ROOT/$CALICO_CRD_CHART" --namespace tigera-operator --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy | "$KUBECTL" --kubeconfig "$KUBECONFIG" apply --server-side --force-conflicts -f -
 "$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Established --timeout=180s crd --all
-"$HELM" upgrade --install calico "$CACHE_ROOT/$CALICO_CHART" --namespace tigera-operator --create-namespace --wait --timeout 10m
-cat > "$ROOT/state/calico-installation.yaml" <<YAML
-apiVersion: operator.tigera.io/v1
-kind: Installation
-metadata:
-  name: default
-spec:
+cat > "$ROOT/state/calico-values.yaml" <<YAML
+installation:
   calicoNetwork:
     bgp: Disabled
     ipPools:
@@ -144,7 +142,7 @@ spec:
         natOutgoing: Enabled
         nodeSelector: all()
 YAML
-"$KUBECTL" --kubeconfig "$KUBECONFIG" apply -f "$ROOT/state/calico-installation.yaml"
+"$HELM" upgrade --install calico "$CACHE_ROOT/$CALICO_CHART" --namespace tigera-operator --create-namespace --values "$ROOT/state/calico-values.yaml" --wait --timeout 10m
 "$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Available --timeout=15m tigerastatus/calico
 while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
   [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue

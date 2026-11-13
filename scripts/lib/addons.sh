@@ -54,3 +54,12 @@ ks_addon_artifact() {
   KS_ADDON_SHA=$sha
   export KS_ADDON_SHA
 }
+
+ks_images_require_ref() {
+  local file=$1 name=$2 expected=$3 actual
+  actual=$(awk -F '\\t' -v wanted="$name" 'NR>1 && $1==wanted {print $2; count++} END {if (count != 1) exit 2}' "$file") || {
+    ks_log ERROR "Expected exactly one image lock row: $name"
+    return 2
+  }
+  [[ $actual == "$expected" ]] || { ks_log ERROR "Image reference mismatch for $name: expected $expected, got $actual"; return 2; }
+}

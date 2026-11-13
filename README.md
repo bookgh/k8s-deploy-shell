@@ -76,7 +76,7 @@ The Nginx stream binary is built from a SHA256-pinned official source archive on
 
 ## M8 Addons (partial)
 
-Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0, CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
+Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.37 tested, unified `quay.io/calico/calico` image and `projectcalico.org.v3` CRDs), CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
 
 
 ## Verification, cleanup, upgrade and packaging
