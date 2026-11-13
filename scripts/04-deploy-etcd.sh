@@ -47,7 +47,9 @@ ks_etcd_deploy() {
   ks_verify_sha256 "$CACHE_ROOT/$ETCD_FILE" "$ETCD_SHA"
   ks_etcd_validate_pki "$PKI_PATH"
   [[ $ETCD_VERSION == 3.7.3 && $ETCD_ARCH == amd64 ]] || { ks_log ERROR "Unreviewed etcd artifact: $ETCD_VERSION/$ETCD_ARCH"; return 2; }
-  [[ -r $SSH_KNOWN_HOSTS_FILE ]] || { ks_log ERROR "Known hosts file missing: $SSH_KNOWN_HOSTS_FILE"; return 2; }
+  if ! ks_is_true "$KS_DRY_RUN"; then
+    [[ -r $SSH_KNOWN_HOSTS_FILE ]] || { ks_log ERROR "Known hosts file missing: $SSH_KNOWN_HOSTS_FILE"; return 2; }
+  fi
   IFS=$' ,\t' read -r -a members <<< "$ETCD_NODES"
   if ks_is_true "$KS_DRY_RUN"; then
     ks_log INFO "DRY-RUN: etcd=$ETCD_VERSION archive=$ETCD_FILE sha256=$ETCD_SHA"

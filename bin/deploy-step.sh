@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 IFS=$'\n\t'
-ROOT=$(cd -- "$(dirname -- "\${BASH_SOURCE[0]}")/.." && pwd -P)
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/config.sh"
 source "$ROOT/scripts/lib/nodes.sh"
@@ -22,19 +22,19 @@ ks_config_validate
 ks_nodes_validate "$NODE_INVENTORY_FILE" "$MASTERS" "$WORKERS"
 DRY_ARGS=()
 APPLY_ARGS=()
-[[ \${KS_DRY_RUN:-false} == true ]] && DRY_ARGS+=(--dry-run)
+[[ ${KS_DRY_RUN:-false} == true ]] && DRY_ARGS+=(--dry-run)
 [[ $APPLY == true ]] && APPLY_ARGS+=(--apply)
 case $STEP in
-  init-system) exec "$ROOT/scripts/01-init-system.sh" --config "$CONFIG" "\${DRY_ARGS[@]}" "\${APPLY_ARGS[@]}" ;;
-  pki) exec "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$CONFIG" "\${DRY_ARGS[@]}" "\${APPLY_ARGS[@]}" ;;
-  distribute-pki) exec "$ROOT/scripts/03-distribute-pki.sh" --config "$CONFIG" "\${DRY_ARGS[@]}" "\${APPLY_ARGS[@]}" ;;
+  init-system) exec "$ROOT/scripts/01-init-system.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
+  pki) exec "$ROOT/scripts/02-gen-ca-and-certs.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
+  distribute-pki) exec "$ROOT/scripts/03-distribute-pki.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" ;;
   etcd|etcd-health|etcd-members|etcd-snapshot)
     COMMAND=deploy
     [[ $STEP == etcd-health ]] && COMMAND=health
     [[ $STEP == etcd-members ]] && COMMAND=member-list
     [[ $STEP == etcd-snapshot ]] && COMMAND=snapshot
-    exec "$ROOT/scripts/04-deploy-etcd.sh" --config "$CONFIG" "\${DRY_ARGS[@]}" "\${APPLY_ARGS[@]}" "$COMMAND" ;;
-  verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "\${DRY_ARGS[@]}" ;;
+    exec "$ROOT/scripts/04-deploy-etcd.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" "$COMMAND" ;;
+  verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
   runtime|control-plane|worker-proxy|kubelet-proxy|addons)
     ks_log ERROR "Stage '$STEP' is not implemented; refusing deployment"
     exit 78 ;;

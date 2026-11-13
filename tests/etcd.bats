@@ -41,3 +41,8 @@ setup() {
 @test "etcd backup path is not under public artifact cache" {
   [[ $ETCD_BACKUP_DIR != "$ARTIFACT_HTTP_ROOT"* ]]
 }
+
+@test "remote etcd installer rejects missing arguments before any operation" {
+  run bash "$ROOT/scripts/remote/install-etcd.sh"
+  [ "$status" -eq 2 ]
+}

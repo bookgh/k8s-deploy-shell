@@ -132,14 +132,14 @@ while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
         if ! ks_ssh_root "$address" "$user" "$port" id etcd; then
           ks_ssh_root "$address" "$user" "$port" useradd --system --gid etcd --home-dir "$ETCD_DATA_DIR" --create-home --shell /sbin/nologin etcd
         fi
-        ks_push_file "$address" "$user" "$port" "$PKI_PATH/etcd/ca.pem" /etc/etcd/pki/ca.crt 0644
-        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/members/$node/server.pem" "$PKI_PATH/etcd/members/$node/server-key.pem" /etc/etcd/pki/server.crt /etc/etcd/pki/server.key
-        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/members/$node/peer.pem" "$PKI_PATH/etcd/members/$node/peer-key.pem" /etc/etcd/pki/peer.crt /etc/etcd/pki/peer.key
-        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/clients/healthcheck-client.pem" "$PKI_PATH/etcd/clients/healthcheck-client-key.pem" /etc/etcd/pki/healthcheck-client.crt /etc/etcd/pki/healthcheck-client.key
-        ks_ssh_root "$address" "$user" "$port" chown root:etcd /etc/etcd /etc/etcd/pki
-        ks_ssh_root "$address" "$user" "$port" chmod 0750 /etc/etcd /etc/etcd/pki
-        ks_ssh_root "$address" "$user" "$port" chown etcd:etcd /etc/etcd/pki/server.key /etc/etcd/pki/peer.key /etc/etcd/pki/healthcheck-client.key
-        ks_ssh_root "$address" "$user" "$port" chmod 0600 /etc/etcd/pki/server.key /etc/etcd/pki/peer.key /etc/etcd/pki/healthcheck-client.key
+        ks_push_file "$address" "$user" "$port" "$PKI_PATH/etcd/ca.pem" "$ETCD_CONFIG_DIR/pki/ca.crt" 0644
+        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/members/$node/server.pem" "$PKI_PATH/etcd/members/$node/server-key.pem" "$ETCD_CONFIG_DIR/pki/server.crt" "$ETCD_CONFIG_DIR/pki/server.key"
+        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/members/$node/peer.pem" "$PKI_PATH/etcd/members/$node/peer-key.pem" "$ETCD_CONFIG_DIR/pki/peer.crt" "$ETCD_CONFIG_DIR/pki/peer.key"
+        ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/clients/healthcheck-client.pem" "$PKI_PATH/etcd/clients/healthcheck-client-key.pem" "$ETCD_CONFIG_DIR/pki/healthcheck-client.crt" "$ETCD_CONFIG_DIR/pki/healthcheck-client.key"
+        ks_ssh_root "$address" "$user" "$port" chown root:etcd "$ETCD_CONFIG_DIR" "$ETCD_CONFIG_DIR/pki"
+        ks_ssh_root "$address" "$user" "$port" chmod 0750 "$ETCD_CONFIG_DIR" "$ETCD_CONFIG_DIR/pki"
+        ks_ssh_root "$address" "$user" "$port" chown etcd:etcd "$ETCD_CONFIG_DIR/pki/server.key" "$ETCD_CONFIG_DIR/pki/peer.key" "$ETCD_CONFIG_DIR/pki/healthcheck-client.key"
+        ks_ssh_root "$address" "$user" "$port" chmod 0600 "$ETCD_CONFIG_DIR/pki/server.key" "$ETCD_CONFIG_DIR/pki/peer.key" "$ETCD_CONFIG_DIR/pki/healthcheck-client.key"
       fi
     done
   fi
