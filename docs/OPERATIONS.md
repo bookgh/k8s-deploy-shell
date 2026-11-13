@@ -117,7 +117,7 @@ Worker 监听地址限制为 `127.0.0.1:<CONTROL_PLANE_PORT>`。Nginx 使用 str
 
 ## 八、Addons（M8，部分完成且受门禁保护）
 
-M8 使用固定版本 Chart 和本地 NodeLocal DNSCache Chart。当前仅支持 `IMAGE_MODE=local-import`；Harbor 和在线镜像模式被有意阻断。Calico 3.33 要求镜像锁至少包含 operator（`quay.io/tigera/operator:v1.44.0`）、`quay.io/calico/calico:v3.33.0`、`quay.io/calico/node:v3.33.0`、`quay.io/calico/third-party-cni-plugins:v3.33.0` 和 `quay.io/calico/typha:v3.33.0`。还必须锁定 `versions.yaml` 中的 Runtime sandbox 镜像（`registry.k8s.io/pause:3.10.1`）和 M9 测试镜像（`docker.io/library/busybox:1.37.0`）。稳定版 CRD 包为 `crd.projectcalico.org.v1`。operator 管理的 Pod 设置 `Installation.imagePullPolicy: Never)；CoreDNS、NodeLocal 和 M9 测试 Pod 在归档导入后同样使用 `Never`。
+M8 使用固定版本 Chart 和本地 NodeLocal DNSCache Chart。当前仅支持 `IMAGE_MODE=local-import`；Harbor 和在线镜像模式被有意阻断。Calico 3.33 要求镜像锁至少包含 operator（`quay.io/tigera/operator:v1.44.0`）、`quay.io/calico/calico:v3.33.0`、`quay.io/calico/node:v3.33.0`、`quay.io/calico/third-party-cni-plugins:v3.33.0` 和 `quay.io/calico/typha:v3.33.0`。还必须锁定 `versions.yaml` 中的 Runtime sandbox 镜像（`registry.k8s.io/pause:3.10.1`）和 M9 测试镜像（`docker.io/library/busybox:1.37.0`）。稳定版 CRD 包为 `crd.projectcalico.org.v1`。operator 管理的 Pod 设置 `Installation.imagePullPolicy: Never`；CoreDNS、NodeLocal 和 M9 测试 Pod 在归档导入后同样使用 `Never`。
 
 只有在渲染全部 Chart 并审计所有 operator 动态生成镜像后，才可创建 `images.lock.tsv`。每行必须包含 repository:tag、OCI digest、归档文件名、归档 SHA256 和 linux/amd64 平台。将校验后的归档复制到 Caddy 缓存，然后执行：
 
