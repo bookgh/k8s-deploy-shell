@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
+SCRIPT_CREATED=false
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
@@ -74,7 +75,7 @@ script_path=$CACHE_ROOT/ks-container-runtime-install.sh
 script_tmp=
 cleanup() {
   [[ -z $script_tmp || ! -e $script_tmp ]] || rm -f -- "$script_tmp"
-  [[ -z $script_path || ! -e $script_path ]] || rm -f -- "$script_path"
+  [[ $SCRIPT_CREATED != true || -z $script_path || ! -e $script_path ]] || rm -f -- "$script_path"
 }
 trap cleanup EXIT
 
@@ -100,6 +101,7 @@ script_tmp=$(mktemp "$CACHE_ROOT/.ks-runtime-install.XXXXXX")
 cp -- "$script_source" "$script_tmp"
 chmod 0644 "$script_tmp"
 mv -f -- "$script_tmp" "$script_path"
+SCRIPT_CREATED=true
 script_tmp=
 script_sha=$(ks_sha256_file "$script_path")
 curl --fail --silent --show-error --max-time 10 --output /dev/null "http://127.0.0.1:$ARTIFACT_HTTP_PORT/ks-container-runtime-install.sh" || {

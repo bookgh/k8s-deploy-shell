@@ -53,3 +53,15 @@ etcd 成员变更不清空数据；快照可恢复。API Server TLS/RBAC/Node au
 ## 5. 状态跟踪
 
 状态以 docs/IMPLEMENTATION-STATUS.md 为准。截至 2026-11-13：M0–M4 有部分工具实现（M4 包含 Kubernetes Root CA 与 pathLen=0 intermediate signer）；M5 已有 etcd 3.7.3 新集群 bootstrap、mTLS、Systemd、健康/成员/快照命令和 39 项 CI 测试，但真实 Rocky Linux 9 集群验证与恢复演练未完成，故仍为部分完成。M6 已有控制平面部署与 kubeconfig 入口，M7 已有 containerd CRI 基础部署入口，二者均为部分完成；kubelet/kube-proxy/Nginx 和 M8 Addons 尚未完成，M10 仍未实现，不能标记为完成。
+
+## Progress snapshot — 2026-11-13
+
+| Milestone | Current implementation state |
+|---|---|
+| M0–M5 | Previously recorded in `docs/IMPLEMENTATION-STATUS.md`; retain their existing acceptance gates |
+| M6 | Partial: control-plane binaries, systemd units and kubeconfigs are present; HA rollout and live API validation remain unverified |
+| M7 | Partial: containerd CRI, kubelet/kube-proxy binaries, node-specific kubeconfigs and disabled service units are present; Worker Nginx stream proxy and service activation remain |
+| M8 | Not implemented: Harbor, Calico, CoreDNS and NodeLocal DNSCache are not yet deployable |
+| M9–M11 | Not implemented: end-to-end acceptance, upgrade/recovery and release packaging remain |
+
+A milestone is not complete merely because scripts exist. Each stage must pass static checks, unit tests, idempotence/dry-run checks, failure-path tests and Rocky Linux 9 integration tests before its status is changed to complete.

@@ -82,3 +82,15 @@ The runtime stage currently supports **containerd only**. It pins the static con
    ```
 
 This stage does not pull container images, configure Calico, start kubelet/kube-proxy, or install the Worker Nginx stream proxy. The pause image is pinned in `versions.yaml` and must be included in the later verified image-import closure before workloads are started. The installer refuses to replace differing existing containerd binaries/configuration; upgrades require the separate upgrade workflow.
+
+## Kubelet and kube-proxy preparation (M7 partial)
+
+After the containerd runtime and PKI distribution stages are complete, prepare the kubelet and kube-proxy binaries and per-node credentials:
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
+```
+
+The apply path requires `DRY_RUN=false`, a verified local `kubectl`, the pinned kubelet/kube-proxy artifacts in the Caddy cache, and node certificates already distributed by `distribute-pki`. Kubelet identities are checked against `system:node:<node>` / `system:nodes`; kube-proxy uses `system:kube-proxy` / `system:node-proxier`. Generated kubeconfigs embed client credentials and are transferred only over the verified SSH channel, never through the public artifact HTTP root.
+
+Both kubeconfigs point to `https://127.0.0.1:<CONTROL_PLANE_PORT>`. On Workers this endpoint is intentionally unusable until the local Nginx stream proxy is deployed. The stage installs binaries and disabled systemd units but does not enable or start kubelet/kube-proxy. Do not start these services until the Worker proxy and node-service activation stages are complete.

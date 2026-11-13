@@ -38,7 +38,8 @@ case $STEP in
   control-plane-health) exec "$ROOT/scripts/05-deploy-control-plane.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" health ;;
   verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
   runtime) exec "$ROOT/scripts/06-deploy-container-runtime.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" deploy ;;
-  worker-proxy|kubelet-proxy|addons)
+  kubelet-proxy) exec "$ROOT/scripts/07-deploy-kubelet-kubeproxy.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" deploy ;;
+  worker-proxy|addons)
     ks_log ERROR "Stage '$STEP' is not implemented; refusing deployment"
     exit 78 ;;
   *) echo "Unknown step: $STEP" >&2; exit 2 ;;

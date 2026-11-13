@@ -110,8 +110,8 @@ while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
   ks_log INFO "Distributing Kubernetes node credentials: $node ($role)"
   ks_push_file "$address" "$user" "$port" "$PKI_PATH/kubernetes/ca.pem" "$KUBERNETES_CONFIG_DIR/pki/ca.crt" 0644
   ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy.pem" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy-key.pem" "$KUBERNETES_CONFIG_DIR/pki/kube-proxy.crt" "$KUBERNETES_CONFIG_DIR/pki/kube-proxy.key"
-  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-client.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-client-key.pem" /var/lib/kubelet/pki/kubelet-client.crt /var/lib/kubelet/pki/kubelet-client.key
-  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving-key.pem" /var/lib/kubelet/pki/kubelet-serving.crt /var/lib/kubelet/pki/kubelet-serving.key
+  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-client.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-client-key.pem" "$KUBELET_DATA_DIR/pki/kubelet-client.crt" "$KUBELET_DATA_DIR/pki/kubelet-client.key"
+  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving-key.pem" "$KUBELET_DATA_DIR/pki/kubelet-serving.crt" "$KUBELET_DATA_DIR/pki/kubelet-serving.key"
 
   if [[ $role == master ]]; then
     ks_log INFO "Distributing control-plane credentials and cluster signer: $node"

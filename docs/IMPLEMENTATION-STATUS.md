@@ -11,7 +11,7 @@ This record distinguishes implemented local tooling from component deployment th
 | M4 PKI | Partial | Three independent root CAs, ServiceAccount keypair, API/control-plane/kubelet/etcd/front-proxy leaf certificates, SAN/EKU/key/validity checks; rotation/recovery and real-node distribution not validated |
 | M5 etcd | Partial | Pinned etcd 3.7.3 binary, mTLS Systemd bootstrap, dedicated etcd identity, existing-data fail-closed guard, health/member-list/snapshot commands and Bats coverage; real Rocky 9 multi-member quorum, snapshot restore and failure recovery remain NOT VERIFIED |
 | M6 control plane | Partial | API Server/controller-manager/scheduler remote installation, generated admin/controller/scheduler kubeconfigs, systemd units and flag-validation workflow exist; HA control-plane rollout and live API/etcd integration remain NOT VERIFIED |
-| M7 runtime/kubelet/proxy | Partial | Pinned containerd 2.3.7 static binary, runc 1.5.2 and CNI plugins 1.10.0; remote installer configures CRI, systemd cgroups and configurable CNI paths. kubelet, kube-proxy and Nginx worker proxy remain not implemented |
+| M7 runtime/kubelet/proxy | Partial | Pinned containerd/runc/CNI CRI deployment plus kubelet and kube-proxy binaries, per-node client kubeconfigs, secure configs and disabled systemd units. Worker Nginx stream proxy and coordinated service activation remain not implemented |
 | M8 Harbor/Addons | Not implemented | Chart versions and image closure are unpinned |
 | M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; full live checks and safe cleanup remain |
 | M10 upgrade/recovery | Not implemented | No upgrade/rollback workflow |
@@ -23,4 +23,4 @@ Commit `999f59896e68a22d786987fc83f745f967d688dc` passed GitHub Actions run [433
 
 etcd 3.7.3 was selected as the current etcd 3.7 patch release. Its official release asset SHA256 is `5dfa9cc3b3ce3b4b491fbcc2057d3daa166bcc6676f743fcd20f8e5760cb9775`. Kubernetes 1.37 release notes for kOps state that 1.37 clusters default to etcd 3.7.3; this is compatibility evidence, not a Kubernetes upstream normative pin. The etcd v3.7 upgrade guide documents breaking changes; this implementation only bootstraps a new cluster and does not perform upgrades.
 
-No Rocky Linux 9 target cluster, containerd CRI runtime, etcd quorum, snapshot restore, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. No production CA was generated and no real cluster was modified.
+No Rocky Linux 9 target cluster, containerd CRI runtime, kubelet/kube-proxy service startup, etcd quorum, snapshot restore, Kubernetes API, CNI, DNS or workload end-to-end validation was performed. No production CA was generated and no real cluster was modified.
