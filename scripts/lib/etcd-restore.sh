@@ -10,7 +10,7 @@ ks_etcd_restore_manifest_validate() {
   local expected_cluster=${3:?expected cluster name required}
   local expected_version=${4:?expected etcd version required}
   local expected_members=${5:?expected member map required}
-  local key value extra actual_sha actual_size mode
+  local line key value actual_sha actual_size mode
   local -A fields=()
   local required
 
@@ -34,8 +34,299 @@ ks_etcd_restore_manifest_validate() {
     return 2
   }
 
-  while IFS=$'\t' read -r key value extra || [[ -n ${key:-} ]]; do
-    [[ -n ${key:-} && -n ${value:-} && -z ${extra:-} ]] || {
+  while IFS= read -r line || [[ -n ${line:-} ]]; do
+    [[ $line == *
+    [[ $key =~ ^[a-z][a-z0-9_]*$ ]] || {
+      ks_log ERROR "Invalid restore manifest key: $key"
+      return 2
+    }
+    [[ ! -v fields[$key] ]] || {
+      ks_log ERROR "Duplicate restore manifest key: $key"
+      return 2
+    }
+    fields[$key]=$value
+  done < "$manifest"
+
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+    [[ -v fields[$required] ]] || {
+      ks_log ERROR "Missing restore manifest field: $required"
+      return 2
+    }
+  done
+  (( ${#fields[@]} == 11 )) || {
+    ks_log ERROR 'Restore manifest contains unknown fields'
+    return 2
+  }
+
+  [[ ${fields[schema_version]} == 1 ]] || return 2
+  [[ ${fields[cluster_name]} == "$expected_cluster" ]] || {
+    ks_log ERROR 'Restore manifest cluster name does not match configuration'
+    return 2
+  }
+  [[ ${fields[etcd_version]} == "$expected_version" ]] || {
+    ks_log ERROR 'Restore manifest etcd version does not match the selected binary'
+    return 2
+  }
+  [[ ${fields[members]} == "$expected_members" ]] || {
+    ks_log ERROR 'Restore manifest member topology does not exactly match inventory'
+    return 2
+  }
+  [[ ${fields[snapshot_sha256]} =~ ^[a-fA-F0-9]{64}$ ]] || return 2
+  [[ ${fields[snapshot_revision]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
+  [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
+  [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
+  [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
+
+  actual_sha=$(ks_sha256_file "$snapshot") || return 2
+  [[ ${actual_sha,,} == "${fields[snapshot_sha256],,}" ]] || {
+    ks_log ERROR 'Snapshot SHA256 does not match restore manifest'
+    return 1
+  }
+  actual_size=$(stat -c '%s' -- "$snapshot") || return 2
+  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+    ks_log ERROR 'Snapshot file size does not match restore manifest'
+    return 1
+  }
+
+  ks_log INFO "Restore manifest preflight passed for cluster=$expected_cluster revision=${fields[snapshot_revision]}"
+}
+\t'* && ${line#*
+    [[ $key =~ ^[a-z][a-z0-9_]*$ ]] || {
+      ks_log ERROR "Invalid restore manifest key: $key"
+      return 2
+    }
+    [[ ! -v fields[$key] ]] || {
+      ks_log ERROR "Duplicate restore manifest key: $key"
+      return 2
+    }
+    fields[$key]=$value
+  done < "$manifest"
+
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+    [[ -v fields[$required] ]] || {
+      ks_log ERROR "Missing restore manifest field: $required"
+      return 2
+    }
+  done
+  (( ${#fields[@]} == 11 )) || {
+    ks_log ERROR 'Restore manifest contains unknown fields'
+    return 2
+  }
+
+  [[ ${fields[schema_version]} == 1 ]] || return 2
+  [[ ${fields[cluster_name]} == "$expected_cluster" ]] || {
+    ks_log ERROR 'Restore manifest cluster name does not match configuration'
+    return 2
+  }
+  [[ ${fields[etcd_version]} == "$expected_version" ]] || {
+    ks_log ERROR 'Restore manifest etcd version does not match the selected binary'
+    return 2
+  }
+  [[ ${fields[members]} == "$expected_members" ]] || {
+    ks_log ERROR 'Restore manifest member topology does not exactly match inventory'
+    return 2
+  }
+  [[ ${fields[snapshot_sha256]} =~ ^[a-fA-F0-9]{64}$ ]] || return 2
+  [[ ${fields[snapshot_revision]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
+  [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
+  [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
+  [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
+
+  actual_sha=$(ks_sha256_file "$snapshot") || return 2
+  [[ ${actual_sha,,} == "${fields[snapshot_sha256],,}" ]] || {
+    ks_log ERROR 'Snapshot SHA256 does not match restore manifest'
+    return 1
+  }
+  actual_size=$(stat -c '%s' -- "$snapshot") || return 2
+  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+    ks_log ERROR 'Snapshot file size does not match restore manifest'
+    return 1
+  }
+
+  ks_log INFO "Restore manifest preflight passed for cluster=$expected_cluster revision=${fields[snapshot_revision]}"
+}
+\t'} != *
+    [[ $key =~ ^[a-z][a-z0-9_]*$ ]] || {
+      ks_log ERROR "Invalid restore manifest key: $key"
+      return 2
+    }
+    [[ ! -v fields[$key] ]] || {
+      ks_log ERROR "Duplicate restore manifest key: $key"
+      return 2
+    }
+    fields[$key]=$value
+  done < "$manifest"
+
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+    [[ -v fields[$required] ]] || {
+      ks_log ERROR "Missing restore manifest field: $required"
+      return 2
+    }
+  done
+  (( ${#fields[@]} == 11 )) || {
+    ks_log ERROR 'Restore manifest contains unknown fields'
+    return 2
+  }
+
+  [[ ${fields[schema_version]} == 1 ]] || return 2
+  [[ ${fields[cluster_name]} == "$expected_cluster" ]] || {
+    ks_log ERROR 'Restore manifest cluster name does not match configuration'
+    return 2
+  }
+  [[ ${fields[etcd_version]} == "$expected_version" ]] || {
+    ks_log ERROR 'Restore manifest etcd version does not match the selected binary'
+    return 2
+  }
+  [[ ${fields[members]} == "$expected_members" ]] || {
+    ks_log ERROR 'Restore manifest member topology does not exactly match inventory'
+    return 2
+  }
+  [[ ${fields[snapshot_sha256]} =~ ^[a-fA-F0-9]{64}$ ]] || return 2
+  [[ ${fields[snapshot_revision]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
+  [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
+  [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
+  [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
+
+  actual_sha=$(ks_sha256_file "$snapshot") || return 2
+  [[ ${actual_sha,,} == "${fields[snapshot_sha256],,}" ]] || {
+    ks_log ERROR 'Snapshot SHA256 does not match restore manifest'
+    return 1
+  }
+  actual_size=$(stat -c '%s' -- "$snapshot") || return 2
+  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+    ks_log ERROR 'Snapshot file size does not match restore manifest'
+    return 1
+  }
+
+  ks_log INFO "Restore manifest preflight passed for cluster=$expected_cluster revision=${fields[snapshot_revision]}"
+}
+\t'* ]] || {
+      ks_log ERROR 'Malformed restore manifest row'
+      return 2
+    }
+    key=${line%%
+    [[ $key =~ ^[a-z][a-z0-9_]*$ ]] || {
+      ks_log ERROR "Invalid restore manifest key: $key"
+      return 2
+    }
+    [[ ! -v fields[$key] ]] || {
+      ks_log ERROR "Duplicate restore manifest key: $key"
+      return 2
+    }
+    fields[$key]=$value
+  done < "$manifest"
+
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+    [[ -v fields[$required] ]] || {
+      ks_log ERROR "Missing restore manifest field: $required"
+      return 2
+    }
+  done
+  (( ${#fields[@]} == 11 )) || {
+    ks_log ERROR 'Restore manifest contains unknown fields'
+    return 2
+  }
+
+  [[ ${fields[schema_version]} == 1 ]] || return 2
+  [[ ${fields[cluster_name]} == "$expected_cluster" ]] || {
+    ks_log ERROR 'Restore manifest cluster name does not match configuration'
+    return 2
+  }
+  [[ ${fields[etcd_version]} == "$expected_version" ]] || {
+    ks_log ERROR 'Restore manifest etcd version does not match the selected binary'
+    return 2
+  }
+  [[ ${fields[members]} == "$expected_members" ]] || {
+    ks_log ERROR 'Restore manifest member topology does not exactly match inventory'
+    return 2
+  }
+  [[ ${fields[snapshot_sha256]} =~ ^[a-fA-F0-9]{64}$ ]] || return 2
+  [[ ${fields[snapshot_revision]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
+  [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
+  [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
+  [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
+
+  actual_sha=$(ks_sha256_file "$snapshot") || return 2
+  [[ ${actual_sha,,} == "${fields[snapshot_sha256],,}" ]] || {
+    ks_log ERROR 'Snapshot SHA256 does not match restore manifest'
+    return 1
+  }
+  actual_size=$(stat -c '%s' -- "$snapshot") || return 2
+  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+    ks_log ERROR 'Snapshot file size does not match restore manifest'
+    return 1
+  }
+
+  ks_log INFO "Restore manifest preflight passed for cluster=$expected_cluster revision=${fields[snapshot_revision]}"
+}
+\t'*}
+    value=${line#*
+    [[ $key =~ ^[a-z][a-z0-9_]*$ ]] || {
+      ks_log ERROR "Invalid restore manifest key: $key"
+      return 2
+    }
+    [[ ! -v fields[$key] ]] || {
+      ks_log ERROR "Duplicate restore manifest key: $key"
+      return 2
+    }
+    fields[$key]=$value
+  done < "$manifest"
+
+  for required in schema_version cluster_name etcd_version snapshot_sha256 snapshot_revision snapshot_hash snapshot_total_keys snapshot_total_size cluster_id members created_at_utc; do
+    [[ -v fields[$required] ]] || {
+      ks_log ERROR "Missing restore manifest field: $required"
+      return 2
+    }
+  done
+  (( ${#fields[@]} == 11 )) || {
+    ks_log ERROR 'Restore manifest contains unknown fields'
+    return 2
+  }
+
+  [[ ${fields[schema_version]} == 1 ]] || return 2
+  [[ ${fields[cluster_name]} == "$expected_cluster" ]] || {
+    ks_log ERROR 'Restore manifest cluster name does not match configuration'
+    return 2
+  }
+  [[ ${fields[etcd_version]} == "$expected_version" ]] || {
+    ks_log ERROR 'Restore manifest etcd version does not match the selected binary'
+    return 2
+  }
+  [[ ${fields[members]} == "$expected_members" ]] || {
+    ks_log ERROR 'Restore manifest member topology does not exactly match inventory'
+    return 2
+  }
+  [[ ${fields[snapshot_sha256]} =~ ^[a-fA-F0-9]{64}$ ]] || return 2
+  [[ ${fields[snapshot_revision]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[snapshot_hash]} =~ ^[a-fA-F0-9]{8,64}$ ]] || return 2
+  [[ ${fields[snapshot_total_keys]} =~ ^[0-9]+$ ]] || return 2
+  [[ ${fields[snapshot_total_size]} =~ ^[1-9][0-9]*$ ]] || return 2
+  [[ ${fields[cluster_id]} =~ ^[a-fA-F0-9]{8,32}$ ]] || return 2
+  [[ ${fields[created_at_utc]} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 2
+
+  actual_sha=$(ks_sha256_file "$snapshot") || return 2
+  [[ ${actual_sha,,} == "${fields[snapshot_sha256],,}" ]] || {
+    ks_log ERROR 'Snapshot SHA256 does not match restore manifest'
+    return 1
+  }
+  actual_size=$(stat -c '%s' -- "$snapshot") || return 2
+  [[ $actual_size == "${fields[snapshot_total_size]}" ]] || {
+    ks_log ERROR 'Snapshot file size does not match restore manifest'
+    return 1
+  }
+
+  ks_log INFO "Restore manifest preflight passed for cluster=$expected_cluster revision=${fields[snapshot_revision]}"
+}
+\t'}
+    [[ -n $key && -n $value ]] || {
       ks_log ERROR 'Malformed restore manifest row'
       return 2
     }
