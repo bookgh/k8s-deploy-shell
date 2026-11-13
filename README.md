@@ -31,7 +31,7 @@ bin/install.sh --config cluster.env plan
 
 `CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd 2.3.7、runc 1.5.2、CNI plugins 1.10.0 的校验和远程 CRI 安装入口；kubelet、kube-proxy 和 Worker Nginx 仍未完成。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
 
 ## etcd M5 使用顺序
 
@@ -49,3 +49,14 @@ bin/deploy-step.sh --config cluster.env --dry-run etcd
 ## 安全与状态
 
 默认保留 SELinux Enforcing，不全局关闭防火墙、不 flush 规则。已有 PKI/etcd/业务数据不得覆盖或删除。私钥不进入 Git 或 HTTP 根目录。真实 Rocky Linux 9 集群验证、etcd quorum 和快照恢复尚未完成；请以 docs/IMPLEMENTATION-STATUS.md 为准。
+
+## M6/M7 当前命令入口
+
+先确保制品缓存与 Caddy HTTP 服务就绪，并完成 SSH HostKey、节点清单、PKI 和 etcd 前置检查。示例配置默认 `DRY_RUN=true`，预览命令不会连接节点或更改主机：
+
+```bash
+bin/deploy-step.sh --config cluster.env --dry-run control-plane
+bin/deploy-step.sh --config cluster.env --dry-run runtime
+```
+
+实际执行前必须人工确认配置并设置 `DRY_RUN=false`。M6 控制平面部署要求 etcd 健康且 PKI 已安全分发；M7 runtime 当前只部署 containerd CRI 和 CNI 基础插件，不会启动 kubelet/kube-proxy，也不会安装 Worker 本地 API Nginx 代理。M7 的完整状态和限制见 `docs/IMPLEMENTATION-STATUS.md`。

@@ -84,3 +84,24 @@ ks_manifest_verify_cache() {
     ks_verify_sha256 "$root/$file" "$sha"
   done < "$manifest"
 }
+
+ks_yaml_scalar() {
+  local yaml=${1:?versions YAML required} section=${2:?section required} key=${3:?key required}
+  [[ -r $yaml && $section =~ ^[A-Za-z0-9_-]+$ && $key =~ ^[A-Za-z0-9_-]+$ ]] || return 2
+  awk -v section="$section" -v key="$key" '
+    /^[A-Za-z0-9_-]+:[[:space:]]*$/ {
+      in_section = ($1 == section ":")
+      next
+    }
+    in_section && $1 == key ":" {
+      value = $2
+      sub(/[[:space:]]+#.*/, "", value)
+      gsub(/^["\047]|["\047]$/, "", value)
+      count++
+    }
+    END {
+      if (count != 1 || value == "") exit 1
+      print value
+    }
+  ' "$yaml"
+}

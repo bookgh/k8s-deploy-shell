@@ -61,3 +61,24 @@ The installer refuses to initialize over non-empty data directories or mismatche
 ## Honest status
 
 A successful config validation or plan is not evidence of a deployed cluster. See `docs/IMPLEMENTATION-STATUS.md`. M5 code has not yet been validated on a real Rocky Linux 9 multi-member cluster.
+
+## Container runtime deployment (M7 partial)
+
+The runtime stage currently supports **containerd only**. It pins the static containerd archive, runc binary and CNI plugin archive through `versions.yaml` and `artifacts/manifest.tsv`. The installer validates archive SHA256 values before extraction, configures containerd v3, uses the systemd cgroup driver, and points the CRI plugin at the configured CNI directories.
+
+1. Copy `cluster.env.example` to `cluster.env` and review the node inventory and all directory paths.
+2. Confirm the artifact cache contains the three runtime archives and the Caddy HTTP service serves that same cache root.
+3. Confirm every target's SSH host key is already trusted in the configured known_hosts file. Targets must be Rocky Linux 9 x86_64 and have root SSH access or non-interactive sudo.
+4. Run a read-only plan:
+
+   ```bash
+   bin/deploy-step.sh runtime --config cluster.env --dry-run
+   ```
+
+5. To apply, explicitly set `DRY_RUN=false` in `cluster.env`, then run:
+
+   ```bash
+   bin/deploy-step.sh runtime --config cluster.env --apply
+   ```
+
+This stage does not pull container images, configure Calico, start kubelet/kube-proxy, or install the Worker Nginx stream proxy. The pause image is pinned in `versions.yaml` and must be included in the later verified image-import closure before workloads are started. The installer refuses to replace differing existing containerd binaries/configuration; upgrades require the separate upgrade workflow.
