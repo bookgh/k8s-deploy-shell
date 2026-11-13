@@ -86,3 +86,14 @@ setup() {
   run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/public-backup.env"
   [ "$status" -ne 0 ]
 }
+
+@test "control plane endpoint cannot overlap the Pod CIDR" {
+  sed 's#CONTROL_PLANE_ENDPOINT=192.0.2.100#CONTROL_PLANE_ENDPOINT=10.244.0.1#' "$TMP" > "$BATS_TEST_TMPDIR/bad-endpoint.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/bad-endpoint.env"
+  [ "$status" -ne 0 ]
+}
+@test "control plane port must be a valid TCP port" {
+  sed 's#CONTROL_PLANE_PORT=6443#CONTROL_PLANE_PORT=65536#' "$TMP" > "$BATS_TEST_TMPDIR/bad-port.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/bad-port.env"
+  [ "$status" -ne 0 ]
+}

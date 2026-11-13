@@ -29,6 +29,15 @@ setup() {
   [ -s "$BATS_TEST_TMPDIR/pki/service-account/sa.key" ]
   [ -s "$BATS_TEST_TMPDIR/pki/service-account/sa.pub" ]
   [ "$(stat -c '%a' "$BATS_TEST_TMPDIR/pki/service-account/sa.key")" = 600 ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/signer/signer.pem" ]
+  [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/signer/signer-key.pem" ]
+  [ "$(stat -c '%a' "$BATS_TEST_TMPDIR/pki/kubernetes/signer/signer-key.pem")" = 600 ]
+  run openssl verify -CAfile "$BATS_TEST_TMPDIR/pki/kubernetes/ca.pem" "$BATS_TEST_TMPDIR/pki/kubernetes/signer/signer.pem"
+  [ "$status" -eq 0 ]
+  run openssl x509 -in "$BATS_TEST_TMPDIR/pki/kubernetes/signer/signer.pem" -noout -text
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"CA:TRUE"* ]]
+  [ "$(grep -c 'BEGIN CERTIFICATE' "$BATS_TEST_TMPDIR/pki/kubernetes/ca-bundle.pem")" -eq 2 ]
   [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/apiserver/apiserver.pem" ]
   [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/admin/admin.pem" ]
   [ -s "$BATS_TEST_TMPDIR/pki/kubernetes/kubelet/master-1/master-1-serving.pem" ]
@@ -41,6 +50,7 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"IP Address:10.96.0.1"* ]]
   [[ "$output" == *"IP Address:192.0.2.11"* ]]
+  [[ "$output" == *"IP Address:192.0.2.100"* ]]
   [[ "$output" == *"DNS:kubernetes.default.svc.cluster.local"* ]]
   run openssl x509 -in "$BATS_TEST_TMPDIR/pki/kubernetes/kubelet/master-1/master-1-client.pem" -noout -subject
   [ "$status" -eq 0 ]

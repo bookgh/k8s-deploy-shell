@@ -29,7 +29,7 @@ bin/install.sh --config cluster.env validate
 bin/install.sh --config cluster.env plan
 ```
 
-节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
+`CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
 M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
 

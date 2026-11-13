@@ -105,7 +105,12 @@ CSR
     "profiles": {
       "server": { "expiry": "876000h", "usages": ["signing", "key encipherment", "server auth"] },
       "client": { "expiry": "876000h", "usages": ["signing", "key encipherment", "client auth"] },
-      "peer": { "expiry": "876000h", "usages": ["signing", "key encipherment", "server auth", "client auth"] }
+      "peer": { "expiry": "876000h", "usages": ["signing", "key encipherment", "server auth", "client auth"] },
+      "intermediate": {
+        "expiry": "876024h",
+        "usages": ["signing", "cert sign", "crl sign"],
+        "ca_constraint": { "is_ca": true, "max_path_len": 0, "max_path_len_zero": true }
+      }
     }
   }
 }
@@ -114,6 +119,44 @@ CONFIG_JSON
   chmod 0600 "$directory/ca-key.pem"
   chmod 0644 "$directory/ca.pem" "$directory/ca.csr" "$directory/ca-csr.json" "$directory/ca-config.json"
   ks_verify_ca "$directory/ca.pem" "$directory/ca-key.pem"
+}
+
+ks_verify_intermediate_ca() {
+  local cert=$1 key=$2 parent_ca=$3 issuer subject end_date end_epoch now_epoch remaining
+  openssl verify -CAfile "$parent_ca" "$cert"
+  openssl x509 -in "$cert" -noout -text > "$cert.text"
+  grep -q 'CA:TRUE' "$cert.text"
+  rm -f -- "$cert.text"
+  issuer=$(openssl x509 -in "$cert" -noout -issuer | sed 's/^issuer=//')
+  subject=$(openssl x509 -in "$parent_ca" -noout -subject | sed 's/^subject=//')
+  [[ $issuer == "$subject" ]] || { ks_log ERROR "Intermediate CA issuer mismatch: $cert"; return 1; }
+  ks_verify_cert_key_pair "$cert" "$key"
+  end_date=$(openssl x509 -in "$cert" -enddate -noout | cut -d= -f2-)
+  end_epoch=$(date -u -d "$end_date" +%s)
+  now_epoch=$(date -u +%s)
+  remaining=$((end_epoch - now_epoch))
+  ((remaining >= 876000 * 3600 - 86400)) || { ks_log ERROR "Intermediate CA validity is shorter than 876000h: $cert"; return 1; }
+}
+
+ks_generate_intermediate_ca() {
+  local cfssl=$1 cfssljson=$2 root_dir=$3 directory=$4
+  install -d -m 0700 "$directory"
+  cat > "$directory/signer-csr.json" <<'CSR'
+{
+  "CN": "Kubernetes Cluster Signing CA",
+  "key": { "algo": "rsa", "size": 4096 },
+  "names": [
+    { "C": "US", "L": "Kubernetes", "O": "Kubernetes", "OU": "Cluster Signer", "ST": "Cluster" }
+  ],
+  "ca": { "expiry": "876024h", "pathlen": 0 }
+}
+CSR
+  "$cfssl" genkey "$directory/signer-csr.json" | "$cfssljson" -bare "$directory/signer"
+  "$cfssl" sign -ca="$root_dir/ca.pem" -ca-key="$root_dir/ca-key.pem" -config="$root_dir/ca-config.json" -profile=intermediate "$directory/signer.csr" | "$cfssljson" -bare "$directory/signer-issued"
+  mv -- "$directory/signer-issued.pem" "$directory/signer.pem"
+  chmod 0600 "$directory/signer-key.pem"
+  chmod 0644 "$directory/signer.pem" "$directory/signer.csr" "$directory/signer-csr.json"
+  ks_verify_intermediate_ca "$directory/signer.pem" "$directory/signer-key.pem" "$root_dir/ca.pem"
 }
 
 ks_issue_cert() {
@@ -143,7 +186,7 @@ ks_generate_leaf_certs() {
   local cfssl=$1 cfssljson=$2 stage=$3 node role address user port node_file
   local master_hosts etcd_hosts etcd_node etcd_role etcd_address
   local -a etcd_nodes=()
-  master_hosts="127.0.0.1,localhost,$KUBERNETES_SERVICE_IP,kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.$CLUSTER_DOMAIN"
+  master_hosts="127.0.0.1,localhost,$CONTROL_PLANE_ENDPOINT,$KUBERNETES_SERVICE_IP,kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.$CLUSTER_DOMAIN"
   node_file=$NODE_INVENTORY_FILE
   [[ $node_file == /* ]] || node_file=$ROOT/$node_file
   while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
@@ -215,6 +258,9 @@ ks_pki_generate() {
   install -m 0700 "$CACHE_ROOT/$CFSSLJSON_FILE" "$cfssljson_src"
   "$cfssl_src" version | grep -F "$CFSSL_VERSION" >/dev/null
   ks_generate_ca "$cfssl_src" "$cfssljson_src" "$stage/kubernetes" 'Kubernetes Root CA'
+  ks_generate_intermediate_ca "$cfssl_src" "$cfssljson_src" "$stage/kubernetes" "$stage/kubernetes/signer"
+  cat "$stage/kubernetes/ca.pem" "$stage/kubernetes/signer/signer.pem" > "$stage/kubernetes/ca-bundle.pem"
+  chmod 0644 "$stage/kubernetes/ca-bundle.pem"
   ks_generate_ca "$cfssl_src" "$cfssljson_src" "$stage/etcd" 'Kubernetes ETCD CA'
   ks_generate_ca "$cfssl_src" "$cfssljson_src" "$stage/front-proxy" 'Kubernetes Front Proxy CA'
   ks_generate_leaf_certs "$cfssl_src" "$cfssljson_src" "$stage"
@@ -229,7 +275,7 @@ CFSSL_VERSION=$CFSSL_VERSION
 ROOT_CA_DURATION=876024h
 LEAF_CERTIFICATE_DURATION=876000h
 GENERATED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-CA_DOMAINS=kubernetes,etcd,front-proxy
+CA_DOMAINS=kubernetes,etcd,front-proxy,kubernetes-signer
 SERVICE_ACCOUNT_ALGORITHM=RSA-2048
 META
   chmod 0600 "$stage/metadata/PKI-MANIFEST.txt"

@@ -3,11 +3,12 @@
 ## Initial setup
 
 1. Copy `cluster.env.example` to `cluster.env` and replace every example value.
-2. Copy `config/nodes.tsv.example` to `config/nodes.tsv`, set every node address/SSH user/port, and update `NODE_INVENTORY_FILE` in `cluster.env`. Provision SSH host keys out of band.
-3. Configure a dedicated known_hosts file; strict checking is mandatory.
-4. Populate `artifacts/manifest.tsv` with immutable HTTPS URLs and independently verified SHA256 values.
-5. Pin component and Helm chart versions after compatibility and image-closure validation.
-6. Run `bin/install.sh --config cluster.env validate`, then `preflight` and `plan`.
+2. Set `CONTROL_PLANE_ENDPOINT` to the external L4 VIP/load-balancer DNS name (or a single Master address for non-HA) and `CONTROL_PLANE_PORT` to the API port. This endpoint is included in the API Server certificate SAN.
+3. Copy `config/nodes.tsv.example` to `config/nodes.tsv`, set every node address/SSH user/port, and update `NODE_INVENTORY_FILE` in `cluster.env`. Provision SSH host keys out of band.
+4. Configure a dedicated known_hosts file; strict checking is mandatory.
+5. Populate `artifacts/manifest.tsv` with immutable HTTPS URLs and independently verified SHA256 values.
+6. Pin component and Helm chart versions after compatibility and image-closure validation.
+7. Run `bin/install.sh --config cluster.env validate`, then `preflight` and `plan`.
 
 ## Commands
 

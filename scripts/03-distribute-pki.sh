@@ -52,6 +52,8 @@ ks_validate_pki_material() {
   [[ $node_file == /* ]] || node_file=$ROOT/$node_file
   required=(
     "$PKI_PATH/kubernetes/ca.pem"
+    "$PKI_PATH/kubernetes/ca-bundle.pem"
+    "$PKI_PATH/kubernetes/signer/signer.pem" "$PKI_PATH/kubernetes/signer/signer-key.pem"
     "$PKI_PATH/kubernetes/apiserver/apiserver.pem" "$PKI_PATH/kubernetes/apiserver/apiserver-key.pem"
     "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client.pem" "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client-key.pem"
     "$PKI_PATH/kubernetes/controller-manager/controller-manager.pem" "$PKI_PATH/kubernetes/controller-manager/controller-manager-key.pem"
@@ -106,23 +108,25 @@ IFS=' ' read -r -a etcd_node_list <<< "${ETCD_NODES//,/ }"
 while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
   [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
   ks_log INFO "Distributing Kubernetes node credentials: $node ($role)"
-  ks_push_file "$address" "$user" "$port" "$PKI_PATH/kubernetes/ca.pem" /etc/kubernetes/pki/ca.crt 0644
-  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy.pem" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy-key.pem" /etc/kubernetes/pki/kube-proxy.crt /etc/kubernetes/pki/kube-proxy.key
+  ks_push_file "$address" "$user" "$port" "$PKI_PATH/kubernetes/ca.pem" "$KUBERNETES_CONFIG_DIR/pki/ca.crt" 0644
+  ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy.pem" "$PKI_PATH/kubernetes/kube-proxy/kube-proxy-key.pem" "$KUBERNETES_CONFIG_DIR/pki/kube-proxy.crt" "$KUBERNETES_CONFIG_DIR/pki/kube-proxy.key"
   ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-client.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-client-key.pem" /var/lib/kubelet/pki/kubelet-client.crt /var/lib/kubelet/pki/kubelet-client.key
   ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving.pem" "$PKI_PATH/kubernetes/kubelet/$node/$node-serving-key.pem" /var/lib/kubelet/pki/kubelet-serving.crt /var/lib/kubelet/pki/kubelet-serving.key
 
   if [[ $role == master ]]; then
-    ks_log INFO "Distributing control-plane credentials: $node"
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/apiserver/apiserver.pem" "$PKI_PATH/kubernetes/apiserver/apiserver-key.pem" /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.key
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client.pem" "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client-key.pem" /etc/kubernetes/pki/apiserver-kubelet-client.crt /etc/kubernetes/pki/apiserver-kubelet-client.key
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/controller-manager/controller-manager.pem" "$PKI_PATH/kubernetes/controller-manager/controller-manager-key.pem" /etc/kubernetes/pki/controller-manager.crt /etc/kubernetes/pki/controller-manager.key
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/scheduler/scheduler.pem" "$PKI_PATH/kubernetes/scheduler/scheduler-key.pem" /etc/kubernetes/pki/scheduler.crt /etc/kubernetes/pki/scheduler.key
-    ks_push_file "$address" "$user" "$port" "$PKI_PATH/front-proxy/ca.pem" /etc/kubernetes/pki/front-proxy-ca.crt 0644
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/front-proxy/client/front-proxy-client.pem" "$PKI_PATH/front-proxy/client/front-proxy-client-key.pem" /etc/kubernetes/pki/front-proxy-client.crt /etc/kubernetes/pki/front-proxy-client.key
-    ks_push_file "$address" "$user" "$port" "$PKI_PATH/etcd/ca.pem" /etc/kubernetes/pki/etcd/ca.crt 0644
-    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/clients/apiserver-etcd-client.pem" "$PKI_PATH/etcd/clients/apiserver-etcd-client-key.pem" /etc/kubernetes/pki/apiserver-etcd-client.crt /etc/kubernetes/pki/apiserver-etcd-client.key
-    ks_push_file "$address" "$user" "$port" "$PKI_PATH/service-account/sa.key" /etc/kubernetes/pki/sa.key 0600
-    ks_push_file "$address" "$user" "$port" "$PKI_PATH/service-account/sa.pub" /etc/kubernetes/pki/sa.pub 0644
+    ks_log INFO "Distributing control-plane credentials and cluster signer: $node"
+    ks_push_file "$address" "$user" "$port" "$PKI_PATH/kubernetes/ca-bundle.pem" "$KUBERNETES_CONFIG_DIR/pki/ca-bundle.crt" 0644
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/signer/signer.pem" "$PKI_PATH/kubernetes/signer/signer-key.pem" "$KUBERNETES_CONFIG_DIR/pki/cluster-signer.crt" "$KUBERNETES_CONFIG_DIR/pki/cluster-signer.key"
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/apiserver/apiserver.pem" "$PKI_PATH/kubernetes/apiserver/apiserver-key.pem" "$KUBERNETES_CONFIG_DIR/pki/apiserver.crt" "$KUBERNETES_CONFIG_DIR/pki/apiserver.key"
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client.pem" "$PKI_PATH/kubernetes/apiserver-kubelet-client/apiserver-kubelet-client-key.pem" "$KUBERNETES_CONFIG_DIR/pki/apiserver-kubelet-client.crt" "$KUBERNETES_CONFIG_DIR/pki/apiserver-kubelet-client.key"
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/controller-manager/controller-manager.pem" "$PKI_PATH/kubernetes/controller-manager/controller-manager-key.pem" "$KUBERNETES_CONFIG_DIR/pki/controller-manager.crt" "$KUBERNETES_CONFIG_DIR/pki/controller-manager.key"
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/kubernetes/scheduler/scheduler.pem" "$PKI_PATH/kubernetes/scheduler/scheduler-key.pem" "$KUBERNETES_CONFIG_DIR/pki/scheduler.crt" "$KUBERNETES_CONFIG_DIR/pki/scheduler.key"
+    ks_push_file "$address" "$user" "$port" "$PKI_PATH/front-proxy/ca.pem" "$KUBERNETES_CONFIG_DIR/pki/front-proxy-ca.crt" 0644
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/front-proxy/client/front-proxy-client.pem" "$PKI_PATH/front-proxy/client/front-proxy-client-key.pem" "$KUBERNETES_CONFIG_DIR/pki/front-proxy-client.crt" "$KUBERNETES_CONFIG_DIR/pki/front-proxy-client.key"
+    ks_push_file "$address" "$user" "$port" "$PKI_PATH/etcd/ca.pem" "$KUBERNETES_CONFIG_DIR/pki/etcd/ca.crt" 0644
+    ks_push_pair "$address" "$user" "$port" "$PKI_PATH/etcd/clients/apiserver-etcd-client.pem" "$PKI_PATH/etcd/clients/apiserver-etcd-client-key.pem" "$KUBERNETES_CONFIG_DIR/pki/apiserver-etcd-client.crt" "$KUBERNETES_CONFIG_DIR/pki/apiserver-etcd-client.key"
+    ks_push_file "$address" "$user" "$port" "$PKI_PATH/service-account/sa.key" "$KUBERNETES_CONFIG_DIR/pki/sa.key" 0600
+    ks_push_file "$address" "$user" "$port" "$PKI_PATH/service-account/sa.pub" "$KUBERNETES_CONFIG_DIR/pki/sa.pub" 0644
     for etcd_node in "${etcd_node_list[@]}"; do
       if [[ $node == "$etcd_node" ]]; then
         ks_log INFO "Distributing etcd member credentials: $node"
@@ -145,4 +149,4 @@ while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
   fi
 done < "$node_file"
 
-ks_log INFO 'PKI distribution completed; root CA private keys and admin credentials remain on the installation node'
+ks_log INFO 'PKI distribution completed; Kubernetes root CA private keys and admin credentials remain on the installation node; only the constrained intermediate signer key is distributed to Masters for CSR rotation'
