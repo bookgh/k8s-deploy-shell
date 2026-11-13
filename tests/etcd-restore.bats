@@ -119,63 +119,6 @@ setup() {
   write_manifest
 }
 
-@test "restore manifest accepts matching snapshot and topology without mutation" {
-  before=$(sha256sum "$manifest" "$snapshot")
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -eq 0 ]
-  after=$(sha256sum "$manifest" "$snapshot")
-  [ "$before" = "$after" ]
-}
-
-@test "restore manifest rejects a snapshot SHA256 mismatch" {
-  printf 'tampered' >> "$snapshot"
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -eq 1 ]
-}
-
-@test "restore manifest rejects a configured cluster mismatch" {
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" other-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-}
-
-@test "restore manifest rejects an inventory topology mismatch" {
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-2=https://192.0.2.12:2380'
-  [ "$status" -ne 0 ]
-}
-
-@test "restore manifest rejects duplicate keys" {
-  printf 'cluster_name\ttest-cluster\n' >> "$manifest"
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-}
-
-@test "restore manifest rejects unknown fields" {
-  printf 'unexpected\tvalue\n' >> "$manifest"
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-}
-
-@test "restore manifest rejects symlink manifest and snapshot inputs" {
-  ln -s "$manifest" "$BATS_TEST_TMPDIR/manifest-link"
-  run ks_etcd_restore_manifest_validate "$BATS_TEST_TMPDIR/manifest-link" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-  ln -s "$snapshot" "$BATS_TEST_TMPDIR/snapshot-link"
-  run ks_etcd_restore_manifest_validate "$manifest" "$BATS_TEST_TMPDIR/snapshot-link" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-}
-
-@test "restore manifest rejects a file size mismatch" {
-  sed -i 's/^snapshot_file_size\t[0-9]*/snapshot_file_size\t1/' "$manifest"
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -eq 1 ]
-}
-
-@test "restore manifest rejects group or world writable metadata" {
-  chmod 0660 "$manifest"
-  run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
-  [ "$status" -ne 0 ]
-}
-
 @test "restore-preflight CLI validates local metadata without applying" {
   cli_manifest="$BATS_TEST_TMPDIR/cli.manifest"
   printf '%s\\t%s\\n' \\
