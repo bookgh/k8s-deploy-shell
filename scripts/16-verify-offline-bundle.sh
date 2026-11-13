@@ -10,7 +10,7 @@ BUNDLE=\${1:?Usage: verify-offline-bundle.sh BUNDLE.tar.gz}
 [[ -f $BUNDLE && ! -L $BUNDLE ]] || { ks_log ERROR 'Bundle is missing, not a regular file or symlinked'; exit 2; }
 SIDECAR=$BUNDLE.sha256
 [[ -f $SIDECAR && ! -L $SIDECAR ]] || { ks_log ERROR 'Bundle SHA256 sidecar missing or unsafe'; exit 2; }
-for cmd sha256sum tar awk grep find mktemp; do ks_require_cmd "$cmd"; done
+for cmd in sha256sum tar awk grep find mktemp; do ks_require_cmd "$cmd"; done
 EXPECTED=$(awk 'NR==1 {print $1}' "$SIDECAR")
 [[ $EXPECTED =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Invalid bundle SHA256 sidecar'; exit 2; }
 ACTUAL=$(ks_sha256_file "$BUNDLE")
@@ -19,7 +19,7 @@ WORK=$(mktemp -d)
 trap 'rm -rf -- "$WORK"' EXIT
 tar -tzf "$BUNDLE" > "$WORK/entries.txt"
 while IFS= read -r entry; do
-  [[ $entry != /* && $entry != .. && $entry != *../* && ( $entry == ks-deploy-shell || $entry == ks-deploy-shell/* ) ]] || { ks_log ERROR "Unsafe archive path: $entry"; exit 2; }
+  [[ $entry != /* && $entry != .. && $entry != *../* && $entry != */.. && ( $entry == ks-deploy-shell || $entry == ks-deploy-shell/* ) ]] || { ks_log ERROR "Unsafe archive path: $entry"; exit 2; }
 done < "$WORK/entries.txt"
 if grep -E '(^|/)(cluster\.env|known_hosts|pki|output)(/|$)|\.(key|pem|crt|kubeconfig|token|log)$' "$WORK/entries.txt"; then
   ks_log ERROR 'Bundle contains a secret or runtime path'

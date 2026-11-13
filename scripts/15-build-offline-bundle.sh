@@ -78,6 +78,10 @@ mv -- "$TMP_BUNDLE" "$BUNDLE"
 chmod 0600 "$BUNDLE"
 (cd "$RELEASE_DIR" && sha256sum "$(basename "$BUNDLE")" > "$(basename "$BUNDLE").sha256")
 chmod 0600 "$BUNDLE.sha256"
-"$ROOT/scripts/16-verify-offline-bundle.sh" "$BUNDLE"
+if ! "$ROOT/scripts/16-verify-offline-bundle.sh" "$BUNDLE"; then
+  rm -f -- "$BUNDLE" "$BUNDLE.sha256"
+  ks_log ERROR 'Bundle verification failed; removed invalid output'
+  exit 1
+fi
 ks_log INFO "Offline bundle created: $BUNDLE"
 ks_log INFO "Bundle SHA256: $(ks_sha256_file "$BUNDLE")"
