@@ -3,3 +3,9 @@ caddy	2.11.9	amd64	https://github.com/caddyserver/caddy/releases/download/v2.11.
 cfssl	1.7.1	amd64	https://github.com/cloudflare/cfssl/releases/download/v1.7.1/cfssl_1.7.1_linux_amd64	a0fc7012d326705f5a318a0c5de7ef79a8a096e70ece13cebfc9c4af671ee02e	cfssl_1.7.1_linux_amd64
 cfssljson	1.7.1	amd64	https://github.com/cloudflare/cfssl/releases/download/v1.7.1/cfssljson_1.7.1_linux_amd64	56783aa96f1554c765670b1ea6182bfb863a3cbfcd87032aa4423bdc1604dc74	cfssljson_1.7.1_linux_amd64
 etcd	3.7.3	amd64	https://github.com/etcd-io/etcd/releases/download/v3.7.3/etcd-v3.7.3-linux-amd64.tar.gz	5dfa9cc3b3ce3b4b491fbcc2057d3daa166bcc6676f743fcd20f8e5760cb9775	etcd-v3.7.3-linux-amd64.tar.gz
+kube-apiserver	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kube-apiserver	b87e5a91107cf994bfa38c6c1b28eb39f01fc040734ec9942c22738bc8b8f34b	kube-apiserver-v1.37.2-linux-amd64
+kube-controller-manager	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kube-controller-manager	fb93284c0c8fe7f8ab87989ad6ee37eeb679a3595a36d8d0646d7cd52dc61b4e	kube-controller-manager-v1.37.2-linux-amd64
+kube-scheduler	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kube-scheduler	6c8b5c11846f58fd88b59ce19dd1cf13d3dd85364936c548c841946d87656a9b	kube-scheduler-v1.37.2-linux-amd64
+kubelet	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubelet	a0e0c4baca9d7e1e0a674359f1615b562a1091dc414c6f7a6094ec23aa2cbe59	kubelet-v1.37.2-linux-amd64
+kube-proxy	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kube-proxy	9d983c489b84261cebfa914796560d019961f8cabba7e10c6481dbf2aa5dbfae	kube-proxy-v1.37.2-linux-amd64
+kubectl	v1.37.2	amd64	https://dl.k8s.io/release/v1.37.2/bin/linux/amd64/kubectl	c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4	kubectl-v1.37.2-linux-amd64
