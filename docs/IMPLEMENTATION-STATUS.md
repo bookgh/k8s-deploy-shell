@@ -46,7 +46,7 @@ M10 provides a one-minor-step upgrade planner and downgrade guard. It does not e
 - 新增 Bats 回归用例，覆盖内容哈希正确但目标为符号链接，以及缓存根目录本身为符号链接两种情况。
 
 本轮验证边界：
-- 上述修改已推送至 M12 开发分支；尚未取得该分支 GitHub Actions 的实际运行结果，因此测试状态为“待 CI 验证”，不能标记通过。
+- 上述修改已推送至 M12 开发分支。GitHub Actions run `43371182911` 已完成且结论为 success：Bash 语法、ShellCheck、CFSSL 集成、Helm/Chart 校验、全部 76 项 Bats 测试及 Shell-only 门禁均通过；其中新增的两项符号链接回归测试已包含在 76 项测试中。shfmt 步骤仍为非阻断格式报告。
 - 尚未在 Rocky Linux 9 amd64 真实节点执行安装、升级、etcd 恢复、CNI、DNS、网络策略和离线部署演练。
 - M0–M11 仍按各自现有证据标记为部分完成；本轮不把静态测试或代码审查替代真实集群验收。
 - 未生成生产 CA、未连接或修改任何真实集群、未发布 Release。
