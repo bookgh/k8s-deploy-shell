@@ -9,17 +9,22 @@ source "$ROOT/scripts/lib/nodes.sh"
 source "$ROOT/scripts/lib/manifest.sh"
 source "$ROOT/scripts/lib/ssh.sh"
 source "$ROOT/scripts/lib/etcd.sh"
+source "$ROOT/scripts/lib/etcd-restore.sh"
 
 CONFIG="$ROOT/cluster.env"
 COMMAND=
 APPLY=false
+RESTORE_SNAPSHOT=
+RESTORE_MANIFEST=
 while (($#)); do
   case $1 in
     --config) (($# >= 2)) || exit 2; CONFIG=$2; shift 2 ;;
     --apply) APPLY=true; shift ;;
     --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
-    --help|-h) printf 'Usage: %s [--config FILE] [--dry-run] [--apply] deploy|health|member-list|snapshot\n' "$0"; exit 0 ;;
-    deploy|health|member-list|snapshot) [[ -z $COMMAND ]] || exit 2; COMMAND=$1; shift ;;
+    --snapshot) (($# >= 2)) || exit 2; RESTORE_SNAPSHOT=$2; shift 2 ;;
+    --manifest) (($# >= 2)) || exit 2; RESTORE_MANIFEST=$2; shift 2 ;;
+    --help|-h) printf 'Usage: %s [--config FILE] [--dry-run] [--apply] deploy|health|member-list|snapshot|restore-preflight --snapshot FILE --manifest FILE\n' "$0"; exit 0 ;;
+    deploy|health|member-list|snapshot|restore-preflight) [[ -z $COMMAND ]] || exit 2; COMMAND=$1; shift ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -147,6 +152,11 @@ case $COMMAND in
       ks_etcd_cli health
       ks_etcd_cli member-list
     fi
+    ;;
+  restore-preflight)
+    [[ $APPLY != true ]] || { ks_log ERROR '--apply is not valid for restore-preflight'; exit 2; }
+    [[ -n $RESTORE_SNAPSHOT && -n $RESTORE_MANIFEST ]] || { ks_log ERROR 'restore-preflight requires --snapshot and --manifest'; exit 2; }
+    ks_etcd_restore_manifest_validate "$RESTORE_MANIFEST" "$RESTORE_SNAPSHOT" "$CLUSTER_NAME" "$ETCD_VERSION" "$ETCD_CLUSTER"
     ;;
   health|member-list|snapshot)
     [[ $APPLY != true ]] || { ks_log ERROR '--apply is only valid for deploy'; exit 2; }
