@@ -39,6 +39,7 @@ ks_manifest_fetch() {
     done < "$manifest"
     return 0
   fi
+  ks_require_cmd stat
   [[ ! -L $root ]] || { ks_log ERROR "Refusing symlink artifact cache root: $root"; return 2; }
   mkdir -p -- "$root"
   while IFS= read -r line || [[ -n $line ]]; do
@@ -88,6 +89,7 @@ ks_manifest_verify_cache() {
   local manifest=${1:?manifest required} root=${2:?cache root required}
   local line name version arch url sha file
   ks_manifest_validate "$manifest"
+  ks_require_cmd stat
   [[ -d $root && ! -L $root ]] || { ks_log ERROR "Artifact cache missing, unsafe or symlinked: $root"; return 2; }
   while IFS= read -r line || [[ -n $line ]]; do
     [[ -z $line || $line == \\#* || $line == $'name\tversion\tarch\turl\tsha256\tfilename' ]] && continue
