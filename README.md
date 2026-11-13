@@ -49,8 +49,8 @@ bin/deploy-step.sh --config cluster.env --dry-run etcd
 恢复前置文件检查（只读，不会恢复或连接节点）：
 
 ```bash
-scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \\
-  --snapshot /secure/backup/cluster.db \\
+scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \
+  --snapshot /secure/backup/cluster.db \
   --manifest /secure/backup/restore.manifest
 ```
 
