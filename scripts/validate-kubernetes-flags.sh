@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154 # fetch_component populates the named globals via printf -v.
 set -Eeuo pipefail
 IFS=$'\n\t'
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
