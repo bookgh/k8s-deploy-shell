@@ -57,7 +57,7 @@ bin/deploy-step.sh --config cluster.env etcd-members
 bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-安装程序拒绝在非空数据目录或活动成员不匹配的情况下初始化集群。它不会自动添加/删除成员，也不会自动恢复快照。快照文件暂存在 etcd 成员的 `ETCD_BACKUP_DIR`；必须将其复制到独立管理的加密备份存储，并在隔离环境中进行恢复测试。Systemd 启动成功不代表 quorum 已建立，必须使用 `etcd-health` 和 `etcd-members` 检查。
+安装程序拒绝在非空数据目录或活动成员不匹配的情况下初始化集群。它不会自动添加/删除成员。当前只提供快照保存与状态检查，不提供自动或受保护的快照恢复子命令；不得将“快照保存成功”视为恢复能力已实现。快照文件暂存在 etcd 成员的 `ETCD_BACKUP_DIR`；必须将其复制到独立管理的加密备份存储，并按 etcd 官方流程在隔离环境中完成恢复演练后，才能把恢复能力标记为已验证。Systemd 启动成功不代表 quorum 已建立，必须使用 `etcd-health` 和 `etcd-members` 检查。
 
 ## 四、如实报告实施状态
 
