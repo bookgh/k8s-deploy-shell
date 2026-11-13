@@ -10,19 +10,19 @@ setup() {
   snapshot_sha=$(ks_sha256_file "$snapshot")
   snapshot_size=$(stat -c '%s' "$snapshot")
   write_manifest() {
-    cat > "$manifest" <<EOF
-schema_version	1
-cluster_name	test-cluster
-etcd_version	3.7.3
-snapshot_sha256	$snapshot_sha
-snapshot_revision	42
-snapshot_hash	0123456789abcdef
-snapshot_total_keys	17
-snapshot_total_size	$snapshot_size
-cluster_id	0123456789abcdef
-members	master-1=https://192.0.2.11:2380
-created_at_utc	2026-11-13T00:00:00Z
-EOF
+    printf '%s\t%s\n' \
+      schema_version 1 \
+      cluster_name test-cluster \
+      etcd_version 3.7.3 \
+      snapshot_sha256 "$snapshot_sha" \
+      snapshot_revision 42 \
+      snapshot_hash 0123456789abcdef \
+      snapshot_total_keys 17 \
+      snapshot_total_size 4096 \
+      snapshot_file_size "$snapshot_size" \
+      cluster_id 0123456789abcdef \
+      members 'master-1=https://192.0.2.11:2380' \
+      created_at_utc 2026-11-13T00:00:00Z > "$manifest"
     chmod 0600 "$manifest"
   }
   write_manifest
@@ -74,7 +74,7 @@ EOF
 }
 
 @test "restore manifest rejects a file size mismatch" {
-  sed -i 's/^snapshot_total_size\t[0-9]*/snapshot_total_size\t1/' "$manifest"
+  sed -i 's/^snapshot_file_size\t[0-9]*/snapshot_file_size\t1/' "$manifest"
   run ks_etcd_restore_manifest_validate "$manifest" "$snapshot" test-cluster 3.7.3 'master-1=https://192.0.2.11:2380'
   [ "$status" -eq 1 ]
 }
