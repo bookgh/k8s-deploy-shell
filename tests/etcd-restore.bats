@@ -5,6 +5,7 @@ setup() {
   source "$ROOT/scripts/lib/common.sh"
   source "$ROOT/scripts/lib/config.sh"
   source "$ROOT/scripts/lib/nodes.sh"
+  source "$ROOT/scripts/lib/etcd.sh"
   source "$ROOT/scripts/lib/manifest.sh"
   source "$ROOT/scripts/lib/etcd-restore.sh"
   cp "$ROOT/cluster.env.example" "$BATS_TEST_TMPDIR/cluster.env"
