@@ -31,7 +31,7 @@ bin/install.sh --config cluster.env plan
 
 `CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元；Worker Nginx stream 代理和服务激活仍未完成。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元；Worker Nginx stream 代理部署入口已实现，kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
 
 ## etcd M5 使用顺序
 
@@ -69,9 +69,9 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 
 该步骤不会启动 kubelet/kube-proxy；必须等 Worker 本地 API stream 代理部署完成后再激活。
 
-### M7 Worker API proxy
+### M7 Worker API 代理
 
-The Nginx stream binary is built from a SHA256-pinned official source archive on Rocky Linux 9 x86_64. Worker proxy listeners bind only to `127.0.0.1:<CONTROL_PLANE_PORT>` and pass TCP through to configured Masters; API TLS is not terminated by Nginx. Active health checks are not claimed.
+Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官方源码归档构建。Worker 代理仅监听 `127.0.0.1:<CONTROL_PLANE_PORT>`，并将 TCP 流量转发至配置的 Master；TLS 仍由 API Server 终止。本项目不宣称开源 Nginx 具备主动健康检查能力。
 
 
 ## M8 Addons (partial)
@@ -79,9 +79,9 @@ The Nginx stream binary is built from a SHA256-pinned official source archive on
 Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.37 tested, stable `crd.projectcalico.org.v1` CRDs and pinned operator/node/CNI/typha image set), CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
 
 
-## Verification, cleanup, upgrade and packaging
+## 验收、清理、升级与离线打包
 
-- M9: `bin/deploy-step.sh --config cluster.env verify` writes text/JSON reports. After pinning/importing `m9-test-busybox`, run `scripts/10-cluster-check.sh --config cluster.env --e2e` for temporary cross-node Pod IP, DNS, ClusterIP, NodePort and NetworkPolicy deny/recovery tests. The report also audits system-pod image references against the OCI digest/archive lock.
-- Cleanup: `bin/deploy-step.sh --config cluster.env cleanup` previews stop-only actions. Data deletion is blocked.
-- M10: `bin/deploy-step.sh --config cluster.env upgrade-plan` previews a one-minor-step upgrade; apply is blocked pending integration tests.
-- M11: `bin/deploy-step.sh --config cluster.env bundle` previews a sanitized offline bundle. Building requires a complete image lock and verified cache; `scripts/16-verify-offline-bundle.sh` verifies the output; archive metadata is normalized with `SOURCE_DATE_EPOCH`; no release is published.
+- M9：执行 `bin/deploy-step.sh --config cluster.env verify` 生成文本和 JSON 报告。锁定并导入 `m9-test-busybox` 后，执行 `scripts/10-cluster-check.sh --config cluster.env --e2e`，验证临时跨节点 Pod IP、DNS、ClusterIP、NodePort 和 NetworkPolicy 拒绝/恢复；报告同时审计系统 Pod 镜像引用与 OCI digest/归档锁的一致性。
+- 清理：`bin/deploy-step.sh --config cluster.env cleanup` 仅预览停止服务操作，数据删除当前禁止。
+- M10：`bin/deploy-step.sh --config cluster.env upgrade-plan` 预览最多跨一个 Minor 版本的升级；在集成测试完成前禁止 apply。
+- M11：`bin/deploy-step.sh --config cluster.env bundle` 预览脱敏离线包。构建要求完整镜像锁和经过校验的缓存；`scripts/16-verify-offline-bundle.sh` 用于验证产物；归档元数据通过 `SOURCE_DATE_EPOCH` 归一化；当前不会自动发布 Release。
