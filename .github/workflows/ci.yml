@@ -58,7 +58,7 @@ jobs:
           tigeraOperator:
             image: tigera/operator
             registry: quay.io
-            version: v1.44.0
+            version: v1.44.0@sha256:0000000000000000000000000000000000000000000000000000000000000000
           installation:
             imagePullPolicy: Never
             calicoNetwork:

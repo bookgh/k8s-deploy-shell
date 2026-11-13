@@ -107,38 +107,20 @@ fi
 install -d -m 0700 "$ROOT/state"
 exec 9>"$ROOT/state/addons.lock"
 flock -n 9 || { ks_log ERROR 'Addon operation already in progress'; exit 75; }
+RENDER_DIR=$(mktemp -d "$ROOT/state/.addon-render.XXXXXX")
 SCRIPT_SOURCE=$ROOT/scripts/remote/import-image.sh
 SCRIPT_PUBLIC=$CACHE_ROOT/ks-import-image.sh
 SCRIPT_CREATED=false
-cleanup() { [[ $SCRIPT_CREATED != true || ! -e $SCRIPT_PUBLIC ]] || rm -f -- "$SCRIPT_PUBLIC"; }
+cleanup() {
+  [[ $SCRIPT_CREATED != true || ! -e $SCRIPT_PUBLIC ]] || rm -f -- "$SCRIPT_PUBLIC"
+  [[ ! -d $RENDER_DIR ]] || rm -rf -- "$RENDER_DIR"
+}
 trap cleanup EXIT
-[[ -f $SCRIPT_SOURCE && ! -L $SCRIPT_SOURCE && ! -L $SCRIPT_PUBLIC ]] || { ks_log ERROR 'Image import helper missing or public path is symlinked'; exit 2; }
-cp -- "$SCRIPT_SOURCE" "$SCRIPT_PUBLIC"; chmod 0644 "$SCRIPT_PUBLIC"; SCRIPT_CREATED=true
-SCRIPT_SHA=$(ks_sha256_file "$SCRIPT_PUBLIC")
-while IFS=$'\t' read -r name reference digest archive archive_sha platform || [[ -n ${name:-} ]]; do
-  [[ -z ${name:-} || $name == name || $name == \#* ]] && continue
-  while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
-    [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
-    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" curl --fail --silent --show-error --location --proto '=http' --output /var/tmp/ks-import-image.sh "http://$INSTALL_NODE_ADVERTISE_ADDR:$ARTIFACT_HTTP_PORT/ks-import-image.sh"
-    remote_sha=$(SSH_USER=$user SSH_PORT=$port ks_ssh "$address" sha256sum /var/tmp/ks-import-image.sh | awk '{print $1}')
-    [[ $remote_sha == "$SCRIPT_SHA" ]] || { ks_log ERROR "Image import helper checksum mismatch on $node"; exit 1; }
-    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" chmod 0700 /var/tmp/ks-import-image.sh
-    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" bash /var/tmp/ks-import-image.sh "http://$INSTALL_NODE_ADVERTISE_ADDR:$ARTIFACT_HTTP_PORT" "$archive" "$archive_sha" "$reference" "$digest" "$CONTAINERD_BIN_DIR/ctr"
-  done < "$NODE_INVENTORY_FILE"
-done < "$ROOT/images.lock.tsv"
-rm -f -- "$SCRIPT_PUBLIC"; SCRIPT_CREATED=false
-# Bootstrap kubelet first; host-network Calico components can then install the CNI.
-while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
-  [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
-  SSH_USER=$user SSH_PORT=$port ks_ssh "$address" systemctl enable --now kubelet.service
-done < "$NODE_INVENTORY_FILE"
-KUBECONFIG=$OUTPUT_PATH/kubeconfig/admin.kubeconfig
-"$KUBECTL" --kubeconfig "$KUBECONFIG" get --raw=/readyz >/dev/null
-"$HELM" template calico-crds "$CACHE_ROOT/$CALICO_CRD_CHART" --namespace tigera-operator --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy | "$KUBECTL" --kubeconfig "$KUBECONFIG" apply --server-side --force-conflicts -f -
-"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Established --timeout=180s crd --all
-CALICO_OPERATOR_DIGEST=$(awk -F '\\t' '$1=="calico-operator" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
-[[ $CALICO_OPERATOR_DIGEST =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Calico operator image digest missing'; exit 2; }
-cat > "$ROOT/state/calico-values.yaml" <<YAML
+CALICO_OPERATOR_DIGEST=$(awk -F '\t' '$1=="calico-operator" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
+COREDNS_DIGEST=$(awk -F '\t' '$1=="coredns" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
+NODELOCAL_DIGEST=$(awk -F '\t' '$1=="node-local-dns" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
+[[ $CALICO_OPERATOR_DIGEST =~ ^[a-fA-F0-9]{64}$ && $COREDNS_DIGEST =~ ^[a-fA-F0-9]{64}$ && $NODELOCAL_DIGEST =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Addon image digest missing'; exit 2; }
+cat > "$RENDER_DIR/calico-values.yaml" <<YAML
 tigeraOperator:
   image: tigera/operator
   registry: quay.io
@@ -159,17 +141,7 @@ goldmane:
 whisker:
   enabled: false
 YAML
-"$HELM" upgrade --install calico "$CACHE_ROOT/$CALICO_CHART" --namespace tigera-operator --create-namespace --values "$ROOT/state/calico-values.yaml" --wait --timeout 10m
-"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Available --timeout=15m tigerastatus/calico
-while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
-  [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
-  SSH_USER=$user SSH_PORT=$port ks_ssh "$address" systemctl enable --now kube-proxy.service
-done < "$NODE_INVENTORY_FILE"
-"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Ready --timeout=15m nodes --all
-COREDNS_DIGEST=$(awk -F '\t' '$1=="coredns" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
-NODELOCAL_DIGEST=$(awk -F '\t' '$1=="node-local-dns" {sub(/^sha256:/,"",$3); print $3}' "$ROOT/images.lock.tsv")
-[[ $COREDNS_DIGEST =~ ^[a-fA-F0-9]{64}$ && $NODELOCAL_DIGEST =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'CoreDNS/NodeLocal image digest missing'; exit 2; }
-cat > "$ROOT/state/coredns-values.yaml" <<YAML
+cat > "$RENDER_DIR/coredns-values.yaml" <<YAML
 image:
   repository: registry.k8s.io/coredns/coredns
   tag: "$COREDNS_IMAGE_VERSION@sha256:$COREDNS_DIGEST"
@@ -205,7 +177,54 @@ servers:
       - name: reload
       - name: loadbalance
 YAML
-"$HELM" upgrade --install coredns "$CACHE_ROOT/$COREDNS_CHART" --namespace kube-system --values "$ROOT/state/coredns-values.yaml" --wait --timeout 10m
+"$HELM" template calico "$CACHE_ROOT/$CALICO_CHART" --values "$RENDER_DIR/calico-values.yaml" > "$RENDER_DIR/calico.yaml"
+"$HELM" template coredns "$CACHE_ROOT/$COREDNS_CHART" --values "$RENDER_DIR/coredns-values.yaml" > "$RENDER_DIR/coredns.yaml"
+"$HELM" template node-local-dns "$ROOT/charts/nodelocaldns" --set-string clusterDomain="$CLUSTER_DOMAIN" --set-string clusterDNS="$KUBERNETES_SERVICE_IP" --set-string localIP="$NODELOCAL_DNS_IP" --set-string kubeProxyMode="$KUBE_PROXY_MODE" --set-string image.digest="sha256:$NODELOCAL_DIGEST" > "$RENDER_DIR/nodelocaldns.yaml"
+for rendered in "$RENDER_DIR/calico.yaml" "$RENDER_DIR/coredns.yaml" "$RENDER_DIR/nodelocaldns.yaml"; do
+  awk '/^[[:space:]]*image:[[:space:]]*/ { sub(/^[[:space:]]*image:[[:space:]]*/, ""); gsub(/"/, ""); split($0, a, /[[:space:]]/); if (a[1] != "") print a[1] }' "$rendered"
+done | sort -u > "$RENDER_DIR/rendered-images.txt"
+printf '%s\n' quay.io/calico/calico:v3.33.0 quay.io/calico/node:v3.33.0 quay.io/calico/third-party-cni-plugins:v3.33.0 quay.io/calico/typha:v3.33.0 docker.io/library/busybox:1.37.0 >> "$RENDER_DIR/rendered-images.txt"
+sort -u -o "$RENDER_DIR/rendered-images.txt" "$RENDER_DIR/rendered-images.txt"
+while IFS= read -r rendered_image; do
+  image_ref=${rendered_image%%@*}
+  awk -F '\t' -v ref="$image_ref" 'NR>1 && $2==ref {found=1} END {exit !found}' "$ROOT/images.lock.tsv" || {
+    ks_log ERROR "Rendered addon image missing from images.lock.tsv: $image_ref"
+    exit 2
+  }
+done < "$RENDER_DIR/rendered-images.txt"
+ks_log INFO "Rendered image closure verified: $(wc -l < "$RENDER_DIR/rendered-images.txt") image references"
+[[ -f $SCRIPT_SOURCE && ! -L $SCRIPT_SOURCE && ! -L $SCRIPT_PUBLIC ]] || { ks_log ERROR 'Image import helper missing or public path is symlinked'; exit 2; }
+cp -- "$SCRIPT_SOURCE" "$SCRIPT_PUBLIC"; chmod 0644 "$SCRIPT_PUBLIC"; SCRIPT_CREATED=true
+SCRIPT_SHA=$(ks_sha256_file "$SCRIPT_PUBLIC")
+while IFS=$'\t' read -r name reference digest archive archive_sha platform || [[ -n ${name:-} ]]; do
+  [[ -z ${name:-} || $name == name || $name == \#* ]] && continue
+  while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
+    [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
+    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" curl --fail --silent --show-error --location --proto '=http' --output /var/tmp/ks-import-image.sh "http://$INSTALL_NODE_ADVERTISE_ADDR:$ARTIFACT_HTTP_PORT/ks-import-image.sh"
+    remote_sha=$(SSH_USER=$user SSH_PORT=$port ks_ssh "$address" sha256sum /var/tmp/ks-import-image.sh | awk '{print $1}')
+    [[ $remote_sha == "$SCRIPT_SHA" ]] || { ks_log ERROR "Image import helper checksum mismatch on $node"; exit 1; }
+    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" chmod 0700 /var/tmp/ks-import-image.sh
+    SSH_USER=$user SSH_PORT=$port ks_ssh "$address" bash /var/tmp/ks-import-image.sh "http://$INSTALL_NODE_ADVERTISE_ADDR:$ARTIFACT_HTTP_PORT" "$archive" "$archive_sha" "$reference" "$digest" "$CONTAINERD_BIN_DIR/ctr"
+  done < "$NODE_INVENTORY_FILE"
+done < "$ROOT/images.lock.tsv"
+rm -f -- "$SCRIPT_PUBLIC"; SCRIPT_CREATED=false
+# Bootstrap kubelet first; host-network Calico components can then install the CNI.
+while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
+  [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
+  SSH_USER=$user SSH_PORT=$port ks_ssh "$address" systemctl enable --now kubelet.service
+done < "$NODE_INVENTORY_FILE"
+KUBECONFIG=$OUTPUT_PATH/kubeconfig/admin.kubeconfig
+"$KUBECTL" --kubeconfig "$KUBECONFIG" get --raw=/readyz >/dev/null
+"$HELM" template calico-crds "$CACHE_ROOT/$CALICO_CRD_CHART" --namespace tigera-operator --api-versions admissionregistration.k8s.io/v1/MutatingAdmissionPolicy | "$KUBECTL" --kubeconfig "$KUBECONFIG" apply --server-side --force-conflicts -f -
+"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Established --timeout=180s crd --all
+"$HELM" upgrade --install calico "$CACHE_ROOT/$CALICO_CHART" --namespace tigera-operator --create-namespace --values "$RENDER_DIR/calico-values.yaml" --wait --timeout 10m
+"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Available --timeout=15m tigerastatus/calico
+while IFS=$'\t' read -r node role address user port || [[ -n ${node:-} ]]; do
+  [[ -z ${node:-} || $node == node_id || $node == \#* ]] && continue
+  SSH_USER=$user SSH_PORT=$port ks_ssh "$address" systemctl enable --now kube-proxy.service
+done < "$NODE_INVENTORY_FILE"
+"$KUBECTL" --kubeconfig "$KUBECONFIG" wait --for=condition=Ready --timeout=15m nodes --all
+"$HELM" upgrade --install coredns "$CACHE_ROOT/$COREDNS_CHART" --namespace kube-system --values "$RENDER_DIR/coredns-values.yaml" --wait --timeout 10m
 "$HELM" upgrade --install node-local-dns "$ROOT/charts/nodelocaldns" --namespace kube-system --set-string clusterDomain="$CLUSTER_DOMAIN" --set-string clusterDNS="$KUBERNETES_SERVICE_IP" --set-string localIP="$NODELOCAL_DNS_IP" --set-string kubeProxyMode="$KUBE_PROXY_MODE" --set-string image.digest="sha256:$NODELOCAL_DIGEST" --wait --timeout 10m
 "$KUBECTL" --kubeconfig "$KUBECONFIG" rollout status --timeout=10m daemonset/node-local-dns -n kube-system
 "$KUBECTL" --kubeconfig "$KUBECONFIG" rollout status --timeout=10m deployment/coredns -n kube-system
