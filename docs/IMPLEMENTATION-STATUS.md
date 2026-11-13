@@ -62,4 +62,6 @@ M10 提供单 Minor 步进升级规划器和降级保护，不执行升级。M11
 
 上述代码和测试已推送到 M12 开发分支。GitHub Actions run `43371464552` 成功，79 项 Bats 测试全部通过。该结果只证明 CI 环境中的自动化测试通过，不代表 Rocky Linux 9 真实部署或生产集群验收通过。
 
-M12 本轮继续审查 M3–M7：SSH 包装器现在独立校验用户、端口、超时、重试和退避参数，并拒绝符号链接或非普通文件的 known_hosts。新增测试覆盖无网络调用的失败路径及 StrictHostKeyChecking 参数。本轮提交关联 GitHub Actions run [43380154235](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43380154235) 已成功：Bash 语法、ShellCheck、shfmt 报告、CFSSL 集成、Helm/Chart 校验、83 项 Bats 测试及 Shell-only 门禁全部通过。shfmt 仍为非阻断步骤。后续仍需完成离线归档安全、Dry-run 零副作用、服务启动顺序、组件健康探测、备份恢复和真实集群故障演练。未执行的测试必须继续标记为未验证。
+M12 本轮继续审查 M3–M7：SSH 包装器现在独立校验用户、端口、超时、重试和退避参数，并拒绝符号链接或非普通文件的 known_hosts。新增测试覆盖无网络调用的失败路径及 StrictHostKeyChecking 参数。本轮提交关联 GitHub Actions run [43380154235](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43380154235) 已成功：Bash 语法、ShellCheck、shfmt 报告、CFSSL 集成、Helm/Chart 校验、83 项 Bats 测试及 Shell-only 门禁全部通过。shfmt 仍为非阻断步骤。
+
+在 SSH 远端命令参数边界增加 Shell 元字符/空白注入回归用例后，GitHub Actions run [43380545168](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43380545168) 再次成功：Bash 语法、ShellCheck、shfmt 报告、CFSSL 集成、Helm/Chart 校验、**84 项 Bats 测试**及 Shell-only 门禁全部通过。shfmt 格式差异仍以非阻断警告报告。后续仍需完成离线归档安全、Dry-run 零副作用、服务启动顺序、组件健康探测、备份恢复和真实集群故障演练。未执行的测试必须继续标记为未验证。
