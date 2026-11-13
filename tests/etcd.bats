@@ -32,7 +32,7 @@ setup() {
   [[ "$output" == *"ReadWritePaths=$ETCD_DATA_DIR"* ]]
 }
 @test "etcd member names are checked against node inventory" {
-  sed 's/master-1/worker-1/g' "$NODE_INVENTORY_FILE" > "$BATS_TEST_TMPDIR/nodes.tsv"
+  awk -F '\t' -v OFS='\t' 'NR == 1 { print; next } $1 == "master-1" { $1 = "worker-1"; $2 = "worker" } 1' "$NODE_INVENTORY_FILE" > "$BATS_TEST_TMPDIR/nodes.tsv"
   ETCD_NODES=worker-1
   run ks_etcd_cluster_string "$BATS_TEST_TMPDIR/nodes.tsv"
   [ "$status" -ne 0 ]
