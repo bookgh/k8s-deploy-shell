@@ -62,7 +62,7 @@ etcd 成员变更不清空数据；快照可恢复。API Server TLS/RBAC/Node au
 | M6 | Partial: control-plane binaries, systemd units and kubeconfigs are present; HA rollout and live API validation remain unverified |
 | M7 | Partial: containerd CRI, kubelet/kube-proxy binaries, node-specific kubeconfigs and disabled service units are present; Worker Nginx stream proxy and service activation remain |
 | M8 | Partial: pinned Calico/CoreDNS chart artifacts, local NodeLocal chart, image lock/import helper and guarded addon deployment entrypoint; image closure and cluster validation remain |
-| M9–M11 | Partial: M9 read-only reports + stop-only cleanup; M10 one-minor upgrade planner (apply blocked); M11 sanitized bundle builder (image closure/cache required) |
+| M9–M11 | Partial: M9 reports + opt-in Pod/DNS/Service/NodePort/NetworkPolicy E2E; M10 one-minor upgrade planner (apply blocked); M11 reproducible sanitized bundle builder/verifier (image closure/cache required) |
 
 A milestone is not complete merely because scripts exist. Each stage must pass static checks, unit tests, idempotence/dry-run checks, failure-path tests and Rocky Linux 9 integration tests before its status is changed to complete.
 
