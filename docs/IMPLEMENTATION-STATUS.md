@@ -9,11 +9,11 @@
 | M0 仓库骨架 | 部分完成 | 目录、忽略规则、CI 和测试已存在；shfmt 仍以非阻断警告方式报告格式差异。 |
 | M1 配置与公共库 | 部分完成 | 具备白名单、非执行式配置解析，拒绝重复/未知键，具备 IPv4 CIDR、etcd 端口/路径/日志策略和节点清单校验；更广泛的网段冲突与故障注入覆盖仍不足。 |
 | M2 制品与 Caddy | 部分完成 | HTTPS TSV 清单；固定版本 Caddy 2.11.9、CFSSL 1.7.1、etcd 3.7.3 及 SHA256；具备缓存校验和受保护的 Caddy Systemd 安装入口；尚无真实 Rocky Linux 9 安装及完整 RPM/Chart/镜像依赖闭包。 |
-| M3 系统与 SSH | 部分完成 | 严格 Host Key SSH 包装器、节点清单、Rocky Linux 9/amd64 只读检查和 SSH stdin PKI 分发已实现；系统初始化 apply 仍受角色防火墙/SELinux 集成测试门禁限制。 |
+| M3 系统与 SSH | 部分完成 | 严格 Host Key SSH 包装器、节点清单、Rocky Linux 9/amd64 只读检查和 SSH stdin PKI 分发已实现；M12 正在补充 SSH 用户/端口/超时/重试参数边界及拒绝符号链接 known_hosts 的回归测试。系统初始化 apply 仍受角色防火墙/SELinux 集成测试门禁限制。 |
 | M4 PKI | 部分完成 | 三套独立根 CA、ServiceAccount 密钥对、API/控制面客户端/kubelet/etcd/front-proxy 叶证书及 SAN/EKU/密钥/有效期校验已实现；轮换、恢复和真实节点分发尚未验证。 |
 | M5 etcd | 部分完成 | 固定版本 etcd 3.7.3、mTLS Systemd bootstrap、专用 etcd 身份、已有数据 fail-closed 保护、健康/成员/快照命令及 Bats 测试已实现；真实 Rocky Linux 9 多成员 quorum、快照恢复和故障恢复仍未验证。 |
 | M6 控制平面 | 部分完成 | API Server/controller-manager/scheduler 远程安装、admin/controller/scheduler kubeconfig、Systemd 单元和参数校验流程已实现；HA 控制面滚动部署及 API/etcd 实时集成未验证。 |
-| M7 Runtime/kubelet/代理 | 部分完成 | Containerd CRI、kubelet/kube-proxy 二进制和禁用状态单元已实现；Worker 已具备 Rocky Linux 9 构建的 Nginx stream 代理，监听 loopback 并进行 TCP 透传。协调激活 kubelet/kube-proxy 仍延后到 M8 Addons 完成后。 |
+| M7 Runtime/kubelet/代理 | 部分完成 | Containerd CRI、kubelet/kube-proxy 二进制和禁用状态单元已实现；Worker 已具备 Rocky Linux 9 构建的 Nginx stream 代理部署入口，目标监听 loopback 并进行 TCP 透传；实际节点运行和故障切换未验证。协调激活 kubelet/kube-proxy 仍延后到 M8 Addons 完成后。 |
 | M8 Harbor/Addons | 部分完成 | Calico 稳定 CRD/operator、CoreDNS 和 NodeLocal Chart 已锁定；Helm 3.22.1 已校验。导入前必须渲染 Chart，并将所有渲染镜像、operator 动态生成镜像（包括 sandbox pause 和 M9 BusyBox）与 OCI digest/归档锁逐项匹配。Calico/CoreDNS/NodeLocal 工作负载使用 `imagePullPolicy: Never`。真实 Rocky Linux 9 集成未验证；Harbor 和 online 镜像模式仍被阻断。 |
 | M9 验收与清理 | 部分完成 | 只读集群检查及镜像锁审计可生成文本/JSON 报告；显式 `--e2e` 可测试跨节点 Pod IP、DNS、ClusterIP、Service DNS、NodePort 和 NetworkPolicy 拒绝/恢复。清理仅停止服务，数据删除仍被阻断。 |
 | M10 升级与恢复 | 部分完成 | 已有单 Minor 步进升级规划器和降级保护；apply 仍受 etcd 恢复、HA 滚动升级和 Rocky Linux 9 集成测试门禁限制。 |
@@ -62,4 +62,4 @@ M10 提供单 Minor 步进升级规划器和降级保护，不执行升级。M11
 
 上述代码和测试已推送到 M12 开发分支。GitHub Actions run `43371464552` 成功，79 项 Bats 测试全部通过。该结果只证明 CI 环境中的自动化测试通过，不代表 Rocky Linux 9 真实部署或生产集群验收通过。
 
-M12 后续仍需完成离线归档安全、Dry-run 零副作用、远端命令参数边界、服务启动顺序、组件健康探测、备份恢复和真实集群故障演练。未执行的测试必须继续标记为未验证。
+M12 本轮继续审查 M3–M7：SSH 包装器现在独立校验用户、端口、超时、重试和退避参数，并拒绝符号链接或非普通文件的 known_hosts。新增测试覆盖无网络调用的失败路径及 StrictHostKeyChecking 参数。CI 尚待本轮提交触发并验证。后续仍需完成离线归档安全、Dry-run 零副作用、服务启动顺序、组件健康探测、备份恢复和真实集群故障演练。未执行的测试必须继续标记为未验证。
