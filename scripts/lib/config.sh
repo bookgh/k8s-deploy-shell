@@ -74,7 +74,7 @@ ks_config_validate() {
   [[ $SCHEDULER_PORT =~ ^[0-9]{1,5}$ ]] && ((10#$SCHEDULER_PORT > 0 && 10#$SCHEDULER_PORT < 65536)) || return 2
   local -A control_ports=()
   local port_key port_value
-  for port_key in CONTROL_PLANE_PORT CONTROLLER_MANAGER_PORT SCHEDULER_PORT ETCD_CLIENT_PORT ETCD_PEER_PORT; do
+  for port_key in CONTROL_PLANE_PORT CONTROLLER_MANAGER_PORT SCHEDULER_PORT ETCD_CLIENT_PORT ETCD_PEER_PORT SSH_PORT; do
     port_value=${!port_key}
     [[ -z ${control_ports[$port_value]:-} ]] || { ks_log ERROR "Port collision: $port_key conflicts with ${control_ports[$port_value]}"; return 2; }
     control_ports[$port_value]=$port_key
