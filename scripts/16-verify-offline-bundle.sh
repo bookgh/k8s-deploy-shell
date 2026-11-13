@@ -2,11 +2,11 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
-ROOT=$(cd -- "$(dirname -- "\${BASH_SOURCE[0]}")/.." && pwd -P)
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 source "$ROOT/scripts/lib/common.sh"
 source "$ROOT/scripts/lib/manifest.sh"
 source "$ROOT/scripts/lib/addons.sh"
-BUNDLE=\${1:?Usage: verify-offline-bundle.sh BUNDLE.tar.gz}
+BUNDLE=${1:?Usage: verify-offline-bundle.sh BUNDLE.tar.gz}
 [[ -f $BUNDLE && ! -L $BUNDLE ]] || { ks_log ERROR 'Bundle is missing, not a regular file or symlinked'; exit 2; }
 SIDECAR=$BUNDLE.sha256
 [[ -f $SIDECAR && ! -L $SIDECAR ]] || { ks_log ERROR 'Bundle SHA256 sidecar missing or unsafe'; exit 2; }
@@ -14,7 +14,7 @@ for cmd in sha256sum tar awk grep find mktemp; do ks_require_cmd "$cmd"; done
 EXPECTED=$(awk 'NR==1 {print $1}' "$SIDECAR")
 [[ $EXPECTED =~ ^[a-fA-F0-9]{64}$ ]] || { ks_log ERROR 'Invalid bundle SHA256 sidecar'; exit 2; }
 ACTUAL=$(ks_sha256_file "$BUNDLE")
-[[ \${ACTUAL,,} == \${EXPECTED,,} ]] || { ks_log ERROR 'Bundle SHA256 mismatch'; exit 1; }
+[[ ${ACTUAL,,} == ${EXPECTED,,} ]] || { ks_log ERROR 'Bundle SHA256 mismatch'; exit 1; }
 WORK=$(mktemp -d)
 trap 'rm -rf -- "$WORK"' EXIT
 tar -tzf "$BUNDLE" > "$WORK/entries.txt"
