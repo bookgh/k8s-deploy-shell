@@ -29,7 +29,7 @@ if ks_is_true "$KS_DRY_RUN"; then
   printf 'Would verify API livez/readyz, etcd quorum, expected Ready nodes, Calico, CoreDNS, NodeLocal DNSCache and every node localhost API endpoint.\n'
   exit 78
 fi
-for cmd in jq kubectl curl stat install mktemp realpath awk head; do ks_require_cmd "$cmd"; done
+for cmd in jq kubectl curl stat install mktemp realpath awk head sha256sum; do ks_require_cmd "$cmd"; done
 [[ $OUTPUT_ROOT == /* ]] || OUTPUT_ROOT=$ROOT/$OUTPUT_ROOT
 OUTPUT_PATH=$(realpath -m -- "$OUTPUT_ROOT")
 [[ -n $REPORT_DIR ]] || REPORT_DIR=$OUTPUT_PATH/reports
@@ -115,6 +115,33 @@ else
       ks_report_add "$CHECKS" "pods-$namespace" FAIL 'one or more pods are not Running/Ready'
     fi
   done
+  if [[ -f $ROOT/images.lock.tsv && ! -L $ROOT/images.lock.tsv ]]; then
+    if ks_images_validate "$ROOT/images.lock.tsv"; then
+      [[ $ARTIFACT_HTTP_ROOT == /* ]] || ARTIFACT_HTTP_ROOT=$ROOT/$ARTIFACT_HTTP_ROOT
+      CACHE_ROOT=$(realpath -m -- "$ARTIFACT_HTTP_ROOT")
+      if ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"; then
+        image_unknown=0
+        for namespace in tigera-operator calico-system kube-system; do
+          "$KUBECTL" get pods -n "$namespace" -o json > "$WORK/images-$namespace.json" 2>/dev/null || continue
+          while IFS= read -r image_ref; do
+            [[ -n $image_ref ]] || continue
+            image_ref=${image_ref%%@*}
+            if ! awk -F '\\t' -v ref="$image_ref" 'NR>1 && $2==ref {found=1} END {exit !found}' "$ROOT/images.lock.tsv"; then
+              ks_report_add "$CHECKS" "image-lock-$namespace" FAIL "running pod image missing from lock: $image_ref"
+              image_unknown=1
+            fi
+          done < <(jq -r '.items[] | ((.spec.initContainers // []) + (.spec.containers // []) + (.spec.ephemeralContainers // []))[] | .image' "$WORK/images-$namespace.json")
+        done
+        ((image_unknown == 0)) && ks_report_add "$CHECKS" addon-image-closure PASS 'all system namespace pod images are present in the digest/archive lock'
+      else
+        ks_report_add "$CHECKS" addon-image-closure FAIL 'one or more locked image archives are missing or have a SHA256 mismatch'
+      fi
+    else
+      ks_report_add "$CHECKS" addon-image-closure FAIL 'images.lock.tsv schema validation failed'
+    fi
+  else
+    ks_report_add "$CHECKS" addon-image-closure NOT_VERIFIED 'images.lock.tsv is unavailable'
+  fi
   if [[ $E2E == true ]]; then
     if [[ -f $ROOT/images.lock.tsv && ! -L $ROOT/images.lock.tsv ]]; then
       ks_images_validate "$ROOT/images.lock.tsv"

@@ -33,6 +33,6 @@ M8 now includes immutable Calico CRD/operator and CoreDNS chart artifacts, Helm 
 
 ## M9–M11 implementation note — 2026-11-13
 
-M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint and per-node loopback API checks with text/JSON reports. Explicit --e2e uses a pinned BusyBox image with imagePullPolicy Never to test cross-node Pod IP, DNS, ClusterIP, Service DNS and NodePort; without --e2e those checks remain NOT_VERIFIED. Cleanup is stop-only; data deletion is blocked.
+M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint, per-node loopback API and system-pod image-lock closure checks with text/JSON reports. Explicit --e2e uses a pinned BusyBox image with imagePullPolicy Never to test cross-node Pod IP, DNS, ClusterIP, Service DNS and NodePort; without --e2e those traffic checks remain NOT_VERIFIED. Cleanup is stop-only; data deletion is blocked.
 
 M10 provides a one-minor-step upgrade planner and downgrade guard. It does not execute upgrades. M11 provides a sanitized bundle builder that excludes cluster.env, known_hosts, PKI, kubeconfigs and state; bundle creation remains blocked until a complete images.lock.tsv and verified artifact/image cache exist. No release is published.
