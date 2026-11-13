@@ -79,3 +79,23 @@ setup() {
   run ks_manifest_verify_cache "$TMP" "$BATS_TEST_TMPDIR/cache-link"
   [ "$status" -ne 0 ]
 }
+
+@test "artifact fetch refuses a symlinked cache target before downloading" {
+  printf 'name\tversion\tarch\turl\tsha256\tfilename\nfoo\t1.0\tamd64\thttps://example.invalid/foo\t%s\tfoo.tar.gz\n' "$HASH" > "$TMP"
+  mkdir -p "$BATS_TEST_TMPDIR/cache"
+  printf x > "$BATS_TEST_TMPDIR/outside-artifact"
+  ln -s "$BATS_TEST_TMPDIR/outside-artifact" "$BATS_TEST_TMPDIR/cache/foo.tar.gz"
+  KS_DRY_RUN=false
+  run ks_manifest_fetch "$TMP" "$BATS_TEST_TMPDIR/cache"
+  [ "$status" -ne 0 ]
+  [ -L "$BATS_TEST_TMPDIR/cache/foo.tar.gz" ]
+}
+
+@test "artifact fetch refuses a symlinked cache root before downloading" {
+  printf 'name\tversion\tarch\turl\tsha256\tfilename\nfoo\t1.0\tamd64\thttps://example.invalid/foo\t%s\tfoo.tar.gz\n' "$HASH" > "$TMP"
+  mkdir -p "$BATS_TEST_TMPDIR/real-cache"
+  ln -s "$BATS_TEST_TMPDIR/real-cache" "$BATS_TEST_TMPDIR/cache-link"
+  KS_DRY_RUN=false
+  run ks_manifest_fetch "$TMP" "$BATS_TEST_TMPDIR/cache-link"
+  [ "$status" -ne 0 ]
+}
