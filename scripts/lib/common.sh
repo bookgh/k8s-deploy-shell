@@ -95,9 +95,8 @@ ks_retry() {
 ks_with_lock() {
   local lockfile=$1; shift
   if ks_is_true "$KS_DRY_RUN"; then
-    ks_log INFO "DRY-RUN: would acquire lock $lockfile"
-    "$@"
-    return
+    ks_log INFO "DRY-RUN: would acquire lock $lockfile and run: $*"
+    return 0
   fi
   ks_require_cmd flock
   mkdir -p -- "$(dirname -- "$lockfile")"
