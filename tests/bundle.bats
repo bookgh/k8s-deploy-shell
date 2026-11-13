@@ -22,7 +22,7 @@ setup() {
 }
 @test "offline bundle verifier accepts a sanitized bundle with valid archive checksums" {
   run "$ROOT/scripts/16-verify-offline-bundle.sh" "$BUNDLE"
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 0 ] || { printf '%s\n' "$output"; false; }
 }
 @test "offline bundle verifier rejects secret key material" {
   mkdir -p "$STAGE/pki"
