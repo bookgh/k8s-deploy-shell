@@ -147,8 +147,7 @@ ks_generate_intermediate_ca() {
   "key": { "algo": "rsa", "size": 4096 },
   "names": [
     { "C": "US", "L": "Kubernetes", "O": "Kubernetes", "OU": "Cluster Signer", "ST": "Cluster" }
-  ],
-  "ca": { "expiry": "876024h", "pathlen": 0 }
+  ]
 }
 CSR
   "$cfssl" genkey "$directory/signer-csr.json" | "$cfssljson" -bare "$directory/signer"
