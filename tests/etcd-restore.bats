@@ -13,7 +13,8 @@ setup() {
   NODE_INVENTORY_FILE=$REPLY
   ks_etcd_cluster_string "$NODE_INVENTORY_FILE"
   cluster_members=$REPLY
-  IFS=  snapshot="$BATS_TEST_TMPDIR/snapshot.db"
+  etcd_version=$(awk '$1 == "etcd" { print $3 }' "$ROOT/artifacts/manifest.tsv")
+  snapshot="$BATS_TEST_TMPDIR/snapshot.db"
   manifest="$BATS_TEST_TMPDIR/restore.manifest"
   printf 'synthetic-etcd-snapshot-fixture\n' > "$snapshot"
   snapshot_sha=$(ks_sha256_file "$snapshot")
