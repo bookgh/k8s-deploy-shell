@@ -53,6 +53,10 @@ ks_manifest_fetch() {
       ks_log ERROR "Artifact cache target is not a regular file: $target"
       return 2
     fi
+    if [[ -f $target ]] && [[ $(stat -c '%h' "$target") != 1 ]]; then
+      ks_log ERROR "Refusing hard-linked artifact cache target: $target"
+      return 2
+    fi
     if [[ -f $target ]] && ks_verify_sha256 "$target" "$sha"; then continue; fi
     tmp=$(mktemp "$root/.${file}.part.XXXXXX")
     if ! curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 --retry-delay 2 --output "$tmp" "$url"; then
@@ -89,6 +93,7 @@ ks_manifest_verify_cache() {
     [[ -z $line || $line == \\#* || $line == $'name\tversion\tarch\turl\tsha256\tfilename' ]] && continue
     IFS=$'\t' read -r name version arch url sha file <<< "$line"
     [[ -f $root/$file && ! -L $root/$file ]] || { ks_log ERROR "Artifact missing, unsafe or symlinked in cache: $file"; return 1; }
+    [[ $(stat -c '%h' "$root/$file") == 1 ]] || { ks_log ERROR "Artifact has multiple hard links in cache: $file"; return 1; }
     ks_verify_sha256 "$root/$file" "$sha"
   done < "$manifest"
 }
