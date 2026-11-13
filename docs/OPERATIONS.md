@@ -135,7 +135,7 @@ Set `DRY_RUN=false` only after the cluster is intentionally available for authen
 bin/deploy-step.sh --config cluster.env verify
 ```
 
-The checker writes mode-0600 text and JSON reports under `output/reports`. A PARTIAL result (exit 78) is expected until cross-node Pod-to-Pod, in-Pod DNS and Service/NodePort E2E tests are implemented and run with a pinned test image. A PASS is not emitted while any check is NOT_VERIFIED.
+The checker writes mode-0600 text and JSON reports under `output/reports`. For explicit E2E tests, first pin/import `m9-test-busybox` (`docker.io/library/busybox:1.37.0`) in `images.lock.tsv`, then run `scripts/10-cluster-check.sh --config cluster.env --e2e`. This creates a temporary namespace and two pods pinned to different nodes with `imagePullPolicy: Never`; it tests Pod IP traffic, DNS, ClusterIP, Service DNS and NodePort, then schedules namespace deletion on exit. Without `--e2e`, these checks remain NOT_VERIFIED and overall status is PARTIAL.
 
 ## Cleanup (stop only)
 

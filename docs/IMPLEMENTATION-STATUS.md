@@ -13,7 +13,7 @@ This record distinguishes implemented local tooling from component deployment th
 | M6 control plane | Partial | API Server/controller-manager/scheduler remote installation, generated admin/controller/scheduler kubeconfigs, systemd units and flag-validation workflow exist; HA control-plane rollout and live API/etcd integration remain NOT VERIFIED |
 | M7 runtime/kubelet/proxy | Partial | Containerd/runc/CNI CRI, kubelet/kube-proxy binaries and disabled units, plus Rocky 9-built Nginx stream proxy on Workers with loopback-only TCP passthrough. Coordinated kubelet/kube-proxy activation is deferred until M8 add-ons are installed |
 | M8 Harbor/Addons | Partial | Calico 3.33.0 (Kubernetes 1.37 tested; unified quay.io/calico/calico image), CoreDNS 1.48.2 and a Kubernetes v1.37.2-derived NodeLocal DNSCache chart are pinned; Helm 3.22.1 and an image-lock/import path exist. Apply is fail-closed until the full rendered/operator image closure and archive lock are populated and Rocky 9 integration is validated. Harbor and online image modes remain blocked |
-| M9 verification/cleanup | Partial | Explicit NOT_VERIFIED response; full live checks and safe cleanup remain |
+| M9 verification/cleanup | Partial | Read-only live checks write text+JSON reports; explicit --e2e creates temporary cross-node BusyBox pods to test Pod IP, DNS, ClusterIP, Service DNS and NodePort. Cleanup is stop-only; data deletion is blocked |
 | M10 upgrade/recovery | Partial | One-minor-step upgrade planner and downgrade guard exist; apply remains blocked pending etcd restore, HA rolling-upgrade and Rocky 9 integration tests |
 | M11 release | Partial | Sanitized offline bundle builder exists; apply requires a complete image lock and verified artifact cache. No GitHub Release is created automatically |
 
@@ -33,6 +33,6 @@ M8 now includes immutable Calico CRD/operator and CoreDNS chart artifacts, Helm 
 
 ## M9–M11 implementation note — 2026-11-13
 
-M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint and per-node loopback API checks with text/JSON reports. It explicitly records Pod-to-Pod, in-Pod DNS and Service/NodePort E2E as NOT_VERIFIED until a dedicated test workload/image is pinned. Cleanup is stop-only; data deletion is blocked.
+M9 now provides read-only API, etcd, node readiness, Calico, CoreDNS, NodeLocal DNSCache, kubelet kubeconfig endpoint and per-node loopback API checks with text/JSON reports. Explicit --e2e uses a pinned BusyBox image with imagePullPolicy Never to test cross-node Pod IP, DNS, ClusterIP, Service DNS and NodePort; without --e2e those checks remain NOT_VERIFIED. Cleanup is stop-only; data deletion is blocked.
 
 M10 provides a one-minor-step upgrade planner and downgrade guard. It does not execute upgrades. M11 provides a sanitized bundle builder that excludes cluster.env, known_hosts, PKI, kubeconfigs and state; bundle creation remains blocked until a complete images.lock.tsv and verified artifact/image cache exist. No release is published.

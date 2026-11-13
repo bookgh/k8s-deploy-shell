@@ -8,13 +8,16 @@ source "$ROOT/scripts/lib/config.sh"
 source "$ROOT/scripts/lib/nodes.sh"
 source "$ROOT/scripts/lib/ssh.sh"
 source "$ROOT/scripts/lib/report.sh"
+source "$ROOT/scripts/lib/addons.sh"
 CONFIG="$ROOT/cluster.env"
 REPORT_DIR=
+E2E=false
 while (($#)); do
   case $1 in
     --config) (($# >= 2)) || exit 2; CONFIG=$2; shift 2 ;;
     --report-dir) (($# >= 2)) || exit 2; REPORT_DIR=$2; shift 2 ;;
     --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
+    --e2e) E2E=true; shift ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -26,7 +29,7 @@ if ks_is_true "$KS_DRY_RUN"; then
   printf 'Would verify API livez/readyz, etcd quorum, expected Ready nodes, Calico, CoreDNS, NodeLocal DNSCache and every node localhost API endpoint.\n'
   exit 78
 fi
-for cmd in jq kubectl curl stat install mktemp; do ks_require_cmd "$cmd"; done
+for cmd in jq kubectl curl stat install mktemp realpath awk head; do ks_require_cmd "$cmd"; done
 [[ $OUTPUT_ROOT == /* ]] || OUTPUT_ROOT=$ROOT/$OUTPUT_ROOT
 OUTPUT_PATH=$(realpath -m -- "$OUTPUT_ROOT")
 [[ -n $REPORT_DIR ]] || REPORT_DIR=$OUTPUT_PATH/reports
@@ -40,7 +43,13 @@ KUBECTL=$OUTPUT_PATH/bin/kubectl
 KUBECONFIG=$OUTPUT_PATH/kubeconfig/admin.kubeconfig
 TIMESTAMP=$(date -u '+%Y%m%dT%H%M%SZ')
 WORK=$(mktemp -d "$ROOT/state/.cluster-check.XXXXXX")
-trap 'rm -rf -- "$WORK"' EXIT
+E2E_NS="ks-verify-${TIMESTAMP,,}"
+E2E_CREATED=false
+cleanup() {
+  if [[ $E2E_CREATED == true ]]; then "$KUBECTL" delete namespace "$E2E_NS" --wait=false >/dev/null 2>&1 || true; fi
+  rm -rf -- "$WORK"
+}
+trap cleanup EXIT
 CHECKS=$WORK/checks.tsv
 : > "$CHECKS"
 ks_run_check() {
@@ -106,9 +115,97 @@ else
       ks_report_add "$CHECKS" "pods-$namespace" FAIL 'one or more pods are not Running/Ready'
     fi
   done
-  ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'cross-node Pod-to-Pod and NetworkPolicy traffic requires a dedicated test workload'
-  ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'in-Pod DNS lookup requires a dedicated test image/workload'
-  ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'ClusterIP and NodePort traffic requires a dedicated test workload'
+  if [[ $E2E == true ]]; then
+    if [[ -f $ROOT/images.lock.tsv && ! -L $ROOT/images.lock.tsv ]]; then
+      ks_images_validate "$ROOT/images.lock.tsv"
+      ks_images_require_ref "$ROOT/images.lock.tsv" m9-test-busybox docker.io/library/busybox:1.37.0
+      [[ $ARTIFACT_HTTP_ROOT == /* ]] || ARTIFACT_HTTP_ROOT=$ROOT/$ARTIFACT_HTTP_ROOT
+      CACHE_ROOT=$(realpath -m -- "$ARTIFACT_HTTP_ROOT")
+      ks_images_verify_archives "$ROOT/images.lock.tsv" "$CACHE_ROOT"
+      E2E_IMAGE_DIGEST=$(awk -F '\\t' '$1=="m9-test-busybox" {print $3}' "$ROOT/images.lock.tsv")
+      E2E_IMAGE="docker.io/library/busybox:1.37.0@$E2E_IMAGE_DIGEST"
+      mapfile -t E2E_NODES < <(awk -F '\\t' 'NR>1 && $1!="" && $1 !~ /^#/ {print $1}' "$NODE_INVENTORY_FILE")
+      if (("${#E2E_NODES[@]}" >= 2)); then
+        "$KUBECTL" create namespace "$E2E_NS"
+        E2E_CREATED=true
+        cat > "$WORK/server.yaml" <<YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ks-e2e-server
+  namespace: "$E2E_NS"
+  labels:
+    app: ks-e2e-server
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${E2E_NODES[0]}"
+  tolerations:
+    - operator: Exists
+  containers:
+    - name: httpd
+      image: "$E2E_IMAGE"
+      imagePullPolicy: Never
+      command: ["sh", "-c", "mkdir -p /www && printf ok >/www/index.html && httpd -f -p 8080 -h /www"]
+      ports:
+        - containerPort: 8080
+YAML
+        cat > "$WORK/client.yaml" <<YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ks-e2e-client
+  namespace: "$E2E_NS"
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "${E2E_NODES[1]}"
+  tolerations:
+    - operator: Exists
+  containers:
+    - name: client
+      image: "$E2E_IMAGE"
+      imagePullPolicy: Never
+      command: ["sh", "-c", "sleep 3600"]
+YAML
+        ks_run_check e2e-server-create "$KUBECTL" apply -f "$WORK/server.yaml"
+        ks_run_check e2e-client-create "$KUBECTL" apply -f "$WORK/client.yaml"
+        ks_run_check e2e-server-ready "$KUBECTL" wait --for=condition=Ready pod/ks-e2e-server -n "$E2E_NS" --timeout=180s
+        ks_run_check e2e-client-ready "$KUBECTL" wait --for=condition=Ready pod/ks-e2e-client -n "$E2E_NS" --timeout=180s
+        if "$KUBECTL" get pod ks-e2e-server -n "$E2E_NS" -o json > "$WORK/server.json" && "$KUBECTL" get pod ks-e2e-client -n "$E2E_NS" -o json > "$WORK/client.json"; then
+          SERVER_IP=$(jq -r '.status.podIP' "$WORK/server.json")
+          SERVER_NODE=$(jq -r '.spec.nodeName' "$WORK/server.json")
+          [[ $SERVER_IP =~ ^[0-9.]+$ && $SERVER_NODE == "${E2E_NODES[0]}" ]] || { ks_report_add "$CHECKS" pod-network-e2e FAIL 'server pod did not schedule on selected node'; SERVER_IP=; }
+          if [[ -n $SERVER_IP ]]; then
+            ks_run_check pod-network-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$SERVER_IP:8080/"
+            ks_run_check dns-resolution-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- nslookup "kubernetes.default.svc.$CLUSTER_DOMAIN"
+            "$KUBECTL" expose pod ks-e2e-server -n "$E2E_NS" --name=ks-e2e-service --type=NodePort --port=8080 --target-port=8080
+            "$KUBECTL" get service ks-e2e-service -n "$E2E_NS" -o json > "$WORK/service.json"
+            SERVICE_IP=$(jq -r '.spec.clusterIP' "$WORK/service.json")
+            NODE_PORT=$(jq -r '.spec.ports[0].nodePort' "$WORK/service.json")
+            NODE_IP=$("$KUBECTL" get node "$SERVER_NODE" -o json | jq -r '.status.addresses[] | select(.type=="InternalIP") | .address' | head -n1)
+            ks_run_check service-clusterip-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$SERVICE_IP:8080/"
+            ks_run_check service-dns-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://ks-e2e-service.$E2E_NS.svc.$CLUSTER_DOMAIN:8080/"
+            ks_run_check service-nodeport-e2e "$KUBECTL" exec ks-e2e-client -n "$E2E_NS" -- wget -qO- "http://$NODE_IP:$NODE_PORT/"
+          fi
+        else
+          ks_report_add "$CHECKS" pod-network-e2e FAIL 'unable to retrieve E2E pod state'
+          ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'E2E client unavailable'
+          ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'E2E client unavailable'
+        fi
+      else
+        ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'two schedulable nodes are required for cross-node test'
+        ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'two schedulable nodes are required for E2E test'
+        ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'two schedulable nodes are required for E2E test'
+      fi
+    else
+      ks_report_add "$CHECKS" pod-network-e2e FAIL 'images.lock.tsv missing; M9 E2E image must be pinned'
+      ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'E2E image lock unavailable'
+      ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'E2E image lock unavailable'
+    fi
+  else
+    ks_report_add "$CHECKS" pod-network-e2e NOT_VERIFIED 'run scripts/10-cluster-check.sh --e2e after pinning/importing the M9 test image'
+    ks_report_add "$CHECKS" dns-resolution-e2e NOT_VERIFIED 'in-Pod DNS lookup requires explicit --e2e'
+    ks_report_add "$CHECKS" service-nodeport-e2e NOT_VERIFIED 'ClusterIP and NodePort traffic requires explicit --e2e'
+  fi
 fi
 if [[ -x $ROOT/scripts/04-deploy-etcd.sh ]]; then
   if "$ROOT/scripts/04-deploy-etcd.sh" --config "$CONFIG" health > "$WORK/etcd.out" 2>&1; then

@@ -45,6 +45,7 @@ ks_images_require_ref "$ROOT/images.lock.tsv" calico-operator quay.io/tigera/ope
 ks_images_require_ref "$ROOT/images.lock.tsv" calico quay.io/calico/calico:v3.33.0
 ks_images_require_ref "$ROOT/images.lock.tsv" coredns registry.k8s.io/coredns/coredns:1.14.7
 ks_images_require_ref "$ROOT/images.lock.tsv" node-local-dns registry.k8s.io/dns/k8s-dns-node-cache:1.26.8
+ks_images_require_ref "$ROOT/images.lock.tsv" m9-test-busybox docker.io/library/busybox:1.37.0
 ks_addon_artifact helm "$(ks_yaml_scalar "$ROOT/versions.yaml" helm version)" "https://get.helm.sh/helm-v3.22.1-linux-amd64.tar.gz"
 HELM_ARCHIVE=$REPLY; HELM_SHA=$KS_ADDON_SHA
 ks_addon_artifact calico-operator-chart "$(ks_yaml_scalar "$ROOT/charts.yaml" calico version)" "https://github.com/projectcalico/calico/releases/download/v3.33.0/tigera-operator-v3.33.0.tgz"

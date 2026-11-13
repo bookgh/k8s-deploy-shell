@@ -1,6 +1,7 @@
 name	reference	digest	archive	archive_sha256	platform
-# Required base image rows: calico-operator, calico, coredns, node-local-dns.
+# Required base image rows: calico-operator, calico, coredns, node-local-dns, m9-test-busybox.
 # Calico 3.33 consolidates calico/node, cni, kube-controllers and typha into quay.io/calico/calico.
+# M9 uses docker.io/library/busybox:1.37.0 with imagePullPolicy Never for temporary E2E pods.
 # Fill only after rendering every pinned chart and resolving all operator-generated images.
 # The reference must be repository:tag and digest must be the registry OCI manifest digest.
 # Every archive must contain the exact reference and be verified on each target node.

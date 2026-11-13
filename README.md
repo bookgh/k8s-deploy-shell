@@ -81,7 +81,7 @@ Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.3
 
 ## Verification, cleanup, upgrade and packaging
 
-- M9: `bin/deploy-step.sh --config cluster.env verify` writes text/JSON reports. End-to-end Pod/Service/DNS checks remain NOT_VERIFIED until a dedicated pinned test image/workload is available.
+- M9: `bin/deploy-step.sh --config cluster.env verify` writes text/JSON reports. After pinning/importing `m9-test-busybox`, run `scripts/10-cluster-check.sh --config cluster.env --e2e` for temporary cross-node Pod IP, DNS, ClusterIP and NodePort tests.
 - Cleanup: `bin/deploy-step.sh --config cluster.env cleanup` previews stop-only actions. Data deletion is blocked.
 - M10: `bin/deploy-step.sh --config cluster.env upgrade-plan` previews a one-minor-step upgrade; apply is blocked pending integration tests.
 - M11: `bin/deploy-step.sh --config cluster.env bundle` previews a sanitized offline bundle. Building requires a complete image lock and verified cache; no release is published.
