@@ -88,3 +88,10 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 
 
 随后 Shell CI #115 进一步发现 CLI 集成测试从 TSV 第 3 列误读 etcd 版本（该清单第 2 列才是版本）；已修正为读取第 2 列，提交 `10d6f405ae5af19c87e6f080aada25c9480cdb0e`。CLI 预检集成测试仍以修复后最新 CI 结果为准。
+
+
+## 九、M5 restore-preflight CI 结果（2026-11-13）
+
+修正测试清单字段索引后，提交 `10d6f405ae5af19c87e6f080aada25c9480cdb0e` 对应 GitHub Actions Shell CI run [43407673512](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43407673512) 成功：Bash Syntax、ShellCheck、shfmt 报告步骤、CFSSL、Helm/Chart lint/render、上游 Chart SHA256、**100 项 Bats 测试**及 Shell-only 门禁全部通过。Kubernetes CLI flag 校验 run [43407673211](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43407673211) 成功。
+
+该 CI 覆盖本轮新增 11 项 restore-preflight 用例（9 项校验器测试、2 项 CLI 测试），但只验证本地合成快照与清单预检；不覆盖真实快照、etcdutl 内部元数据、远端恢复事务、quorum、真实 Rocky Linux 9 节点或生产恢复演练。shfmt 仍为非阻断报告步骤。随后仅更新了本文档，未更改代码。
