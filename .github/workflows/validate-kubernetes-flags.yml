@@ -1,0 +1,27 @@
+name: validate-kubernetes-flags
+on:
+  push:
+    branches: [main]
+    paths:
+      - artifacts/manifest.tsv
+      - scripts/05-deploy-control-plane.sh
+      - scripts/remote/install-control-plane.sh
+      - scripts/validate-kubernetes-flags.sh
+      - .github/workflows/validate-kubernetes-flags.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - artifacts/manifest.tsv
+      - scripts/05-deploy-control-plane.sh
+      - scripts/remote/install-control-plane.sh
+      - scripts/validate-kubernetes-flags.sh
+      - .github/workflows/validate-kubernetes-flags.yml
+permissions:
+  contents: read
+jobs:
+  verify-cli-flags:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate pinned binary flags
+        run: bash scripts/validate-kubernetes-flags.sh

@@ -34,8 +34,10 @@ case $STEP in
     [[ $STEP == etcd-members ]] && COMMAND=member-list
     [[ $STEP == etcd-snapshot ]] && COMMAND=snapshot
     exec "$ROOT/scripts/04-deploy-etcd.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" "$COMMAND" ;;
+  control-plane) exec "$ROOT/scripts/05-deploy-control-plane.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" deploy ;;
+  control-plane-health) exec "$ROOT/scripts/05-deploy-control-plane.sh" --config "$CONFIG" "${DRY_ARGS[@]}" "${APPLY_ARGS[@]}" health ;;
   verify) exec "$ROOT/scripts/10-cluster-check.sh" --config "$CONFIG" "${DRY_ARGS[@]}" ;;
-  runtime|control-plane|worker-proxy|kubelet-proxy|addons)
+  runtime|worker-proxy|kubelet-proxy|addons)
     ks_log ERROR "Stage '$STEP' is not implemented; refusing deployment"
     exit 78 ;;
   *) echo "Unknown step: $STEP" >&2; exit 2 ;;

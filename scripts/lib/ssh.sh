@@ -8,7 +8,7 @@ ks_ssh() {
   [[ $host =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { ks_log ERROR 'Invalid SSH host token'; return 2; }
   (($# > 0)) || { ks_log ERROR 'Remote command required'; return 2; }
   for arg in "$@"; do
-    [[ $arg =~ ^[A-Za-z0-9_./:=,@+-]+$ ]] || { ks_log ERROR 'Unsafe remote argument; only restricted tokens are accepted'; return 2; }
+    [[ $arg =~ ^[A-Za-z0-9_./:=,@+%-]+$ ]] || { ks_log ERROR 'Unsafe remote argument; only restricted tokens are accepted'; return 2; }
     remote_command+="$arg "
   done
   remote_command=${remote_command% }

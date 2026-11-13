@@ -97,3 +97,9 @@ setup() {
   run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/bad-port.env"
   [ "$status" -ne 0 ]
 }
+
+@test "control-plane ports must be unique on Master nodes" {
+  sed 's#SCHEDULER_PORT=10259#SCHEDULER_PORT=6443#' "$TMP" > "$BATS_TEST_TMPDIR/port-collision.env"
+  run bash -c 'source "$1/scripts/lib/common.sh"; source "$1/scripts/lib/config.sh"; ks_config_load "$2"; ks_config_validate' _ "$ROOT" "$BATS_TEST_TMPDIR/port-collision.env"
+  [ "$status" -ne 0 ]
+}
