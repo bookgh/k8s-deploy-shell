@@ -21,7 +21,7 @@
 | M8 | Harbor/Addons | 镜像模式、Calico、CoreDNS、NodeLocal | 离线镜像闭包、网络/DNS |
 | M9 | 验收/清理 | 报告、端到端、分级清理 | 所有强制项通过、删除保护 |
 | M10 | 升级/恢复 | 逐版本升级、回滚、轮换 | 目标环境演练 |
-| M11 | 发布 | 离线包、兼容矩阵、运维手册 | 可复现构建和发布审计 |
+| M11 | 发布 | 离线包、兼容矩阵、运维手册 | 可复现构建和发布审计 |\n| M12 | 安全加固与生产验收 | 全仓审查、风险修复、攻击面回归测试、Rocky 9 集成验证 | CI 全绿、离线/在线闭包验证、真实集群恢复与端到端验收 |
 
 ## 3. 各阶段验收
 
@@ -69,3 +69,25 @@ A milestone is not complete merely because scripts exist. Each stage must pass s
 ## M7 progress note — 2026-11-13
 
 The current M7 implementation includes kubelet/kube-proxy credentials and disabled units, a pinned Nginx source build, and a Worker-only loopback stream proxy deployment path. Node-service activation remains gated until M8 add-ons have been installed. M7 is still partial until Rocky Linux 9 target integration, failover behavior, TLS pass-through, service recovery and end-to-end cluster checks pass.
+
+
+## M12：安全加固与生产验收
+
+M12 不以增加脚本数量为目标，而是逐项关闭 M0–M11 的实现缺口。所有修复必须先有可复现问题或明确验收缺口，再修改代码并增加回归测试。
+
+执行顺序：
+1. 安全边界：制品缓存与 HTTP 根目录、归档路径/链接/特殊文件、SSH 参数、PKI 分发、权限和敏感数据排除。
+2. 幂等与恢复：重复执行、并发锁、原子写入、中断清理、备份一致性、失败回滚和现有数据保护。
+3. 部署依赖：etcd quorum、CRI、控制平面、Worker 本地代理、kubelet/kube-proxy、Addons 的实际依赖及服务启动顺序。
+4. 验收可信度：PASS/FAIL/NOT_VERIFIED 语义、API/etcd/节点/镜像闭包/跨节点网络/DNS/Service/NodePort/NetworkPolicy 检查。
+5. 交付验证：ShellCheck、shfmt、Bats、Shell 语法、Shell-only 门禁、Helm 渲染、制品哈希、离线包安全验证及可复现构建。
+6. 真实环境：Rocky Linux 9 amd64 多节点部署、etcd 快照恢复、控制平面故障、Worker 故障切换、离线部署和升级/回滚演练。
+
+退出条件：
+- 每个已修复缺陷均有自动化回归测试，且 CI 实际运行成功。
+- 任何危险操作均有显式授权、备份、失败保护和恢复说明。
+- 在线准备与离线部署的制品闭包完整且可验证。
+- 真实 Rocky Linux 9 环境完成部署、故障、恢复和端到端验收。
+- 文档逐项列出证据、命令、结果和未验证事项；没有证据的能力继续标记为未验证。
+
+边界：GitHub Actions 不连接集群；CI 通过不等于生产验收通过。没有用户提供的目标环境、访问凭据和单独的操作授权时，只能补齐验证工具与自动化测试，不得宣称完成真实集群验证。
