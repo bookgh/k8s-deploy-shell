@@ -52,4 +52,4 @@ etcd 成员变更不清空数据；快照可恢复。API Server TLS/RBAC/Node au
 
 ## 5. 状态跟踪
 
-状态以 docs/IMPLEMENTATION-STATUS.md 为准。截至 2026-11-13：M0–M4 有部分工具实现；M5 已有 etcd 3.7.3 新集群 bootstrap、mTLS、Systemd、健康/成员/快照命令和 39 项 CI 测试，但真实 Rocky Linux 9 集群验证与恢复演练未完成，故仍为部分完成。M6–M8、M10 尚未实现，不能标记为完成。
+状态以 docs/IMPLEMENTATION-STATUS.md 为准。截至 2026-11-13：M0–M4 有部分工具实现（M4 包含 Kubernetes Root CA 与 pathLen=0 intermediate signer）；M5 已有 etcd 3.7.3 新集群 bootstrap、mTLS、Systemd、健康/成员/快照命令和 39 项 CI 测试，但真实 Rocky Linux 9 集群验证与恢复演练未完成，故仍为部分完成。M6–M8、M10 尚未实现，不能标记为完成。

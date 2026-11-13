@@ -19,7 +19,7 @@ This record distinguishes implemented local tooling from component deployment th
 
 ## Verification record
 
-Commit `e85d33c3abf3d6b634d67d5d297a14496a0bec78` passed GitHub Actions run [43347233830](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43347233830): Bash syntax, ShellCheck, shfmt reporting, CFSSL integration tests, all 39 Bats tests, and forbidden-language scan passed. shfmt currently reports formatting differences as a warning-only step; it is not a blocking gate.
+Commit `999f59896e68a22d786987fc83f745f967d688dc` passed GitHub Actions run [43348228075](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43348228075): Bash syntax, ShellCheck, shfmt reporting, CFSSL integration tests, all 41 Bats tests (including intermediate CA issuance/chain checks), and forbidden-language scan passed. shfmt currently reports formatting differences as a warning-only step; it is not a blocking gate.
 
 etcd 3.7.3 was selected as the current etcd 3.7 patch release. Its official release asset SHA256 is `5dfa9cc3b3ce3b4b491fbcc2057d3daa166bcc6676f743fcd20f8e5760cb9775`. Kubernetes 1.37 release notes for kOps state that 1.37 clusters default to etcd 3.7.3; this is compatibility evidence, not a Kubernetes upstream normative pin. The etcd v3.7 upgrade guide documents breaking changes; this implementation only bootstraps a new cluster and does not perform upgrades.
 
