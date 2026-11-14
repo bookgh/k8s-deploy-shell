@@ -146,3 +146,10 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 
 - Host Key 权限门禁首轮 Shell CI（提交 `dad2031d6b10ecb0a6f826187474bcaa0b1b61af`）Bats 103/105；其中有效 known_hosts 连接测试与 group/world writable 拒绝测试失败。原因是项目全局 IFS 为 newline/tab，`read` 未按 stat 输出中的空格拆分 mode/owner，导致合法文件也被拒绝。
 - 已在 `6cc3881566fa9dcc9ae4ffc80e59b96a196b9654` 将解析改为局部 `IFS=' '`，不改变全局 IFS。修正后的 Shell CI 待完成后再记录最终结论。
+
+## 十五、M12 最终自动化验证结果（2026-11-14）
+
+- 修正 known_hosts 元数据解析后的代码提交 `6cc3881566fa9dcc9ae4ffc80e59b96a196b9654`：Shell CI run [43538857262](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538857262) **成功**；Bats **105/105**，Bash Syntax、ShellCheck、CFSSL、Helm/Chart lint、上游 Chart SHA256 和 Shell-only 门禁全部通过。
+- Kubernetes CLI flag workflow run [43538857022](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538857022) **成功**。
+- shfmt report 仍输出全仓格式差异 warning，步骤为 non-blocking；P2 shfmt 全仓整改尚未完成。
+- 本结果证明 GitHub Actions 合成环境的代码门禁通过，不证明 Rocky Linux 9 目标环境、真实 SSH 节点、etcd quorum、HA 滚动、M5 恢复或生产验收通过。
