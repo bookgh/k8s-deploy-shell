@@ -36,7 +36,7 @@ ks_ssh_validate_known_hosts() {
     ks_log ERROR "Known hosts must be a readable regular file, not a symlink: $known_hosts"
     return 2
   }
-  read -r mode owner < <(stat -c '%a %u' -- "$known_hosts") || {
+  IFS=' ' read -r mode owner < <(stat -c '%a %u' -- "$known_hosts") || {
     ks_log ERROR "Cannot inspect known_hosts ownership and mode: $known_hosts"
     return 2
   }
