@@ -141,3 +141,8 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 - 文件模式修正后的代码提交 `c8ae03771f0329b285946c2edcf5cb2525a26951`：Shell CI 成功，Bats 104/104；Bash Syntax、ShellCheck、CFSSL、Helm/Chart、上游制品 SHA256、Shell-only 门禁均通过。shfmt 仍输出非阻断格式差异 warning。
 - 仅更新状态文档的提交 `401daac1e9cd2c552e346d29e090fe9d6c407c28`：Shell CI run [43538498774](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538498774) 与 CLI flag run [43538498832](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538498832) 均成功。
 - 后续提交 `dad2031d6b10ecb0a6f826187474bcaa0b1b61af` 追加 known_hosts 所有者和 group/world 写权限门禁及 Bats 用例；该新增代码的 workflow 结果仍待确认。
+
+## 十四、Host Key 权限校验回归修正（2026-11-14）
+
+- Host Key 权限门禁首轮 Shell CI（提交 `dad2031d6b10ecb0a6f826187474bcaa0b1b61af`）Bats 103/105；其中有效 known_hosts 连接测试与 group/world writable 拒绝测试失败。原因是项目全局 IFS 为 newline/tab，`read` 未按 stat 输出中的空格拆分 mode/owner，导致合法文件也被拒绝。
+- 已在 `6cc3881566fa9dcc9ae4ffc80e59b96a196b9654` 将解析改为局部 `IFS=' '`，不改变全局 IFS。修正后的 Shell CI 待完成后再记录最终结论。
