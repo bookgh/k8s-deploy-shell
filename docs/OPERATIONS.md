@@ -158,3 +158,26 @@ bin/deploy-step.sh --config cluster.env verify
 使用 `bin/deploy-step.sh --config cluster.env upgrade-plan` 预览升级顺序；针对指定目标版本，可直接向 `scripts/14-upgrade.sh` 传入 `--target-version vX.Y.Z`。在 Rocky Linux 9 HA、恢复和回滚测试完成前，实际升级执行保持阻断。
 
 使用 `bin/deploy-step.sh --config cluster.env bundle` 预览离线包要求。创建离线包必须设置 `DRY_RUN=false)、显式传入 `--apply)，并提供完整的 `images.lock.tsv`、已验证的制品缓存，以及不含符号链接和敏感文件的缓存目录。构建器使用 `SOURCE_DATE_EPOCH` 归一化归档 mtime（默认采用源提交时间），生成相对路径 SHA256 sidecar，并在报告成功前调用 `scripts/16-verify-offline-bundle.sh`。传输后使用 `scripts/16-verify-offline-bundle.sh /path/to/bundle.tar.gz` 验证。离线包排除集群密钥，不会自动发布 GitHub Release。
+
+## 十二、M12 本轮安全门禁与操作语义（2026-11-14）
+
+### etcd 快照
+
+`snapshot` 会在 etcd 成员节点写入备份文件，因此必须显式授权：
+
+```bash
+# 只读预览，不连接节点
+scripts/04-deploy-etcd.sh --config cluster.env snapshot
+
+# 真正执行：配置 DRY_RUN=false，并显式 --apply
+scripts/04-deploy-etcd.sh --config cluster.env --apply snapshot
+```
+
+`--dry-run` 优先级高于配置和 `--apply`。若配置为 `DRY_RUN=false` 却未传 `--apply`，命令以退出码 78 拒绝执行。快照前置的 etcd 健康/成员状态、快照后自动 manifest、独立备份复制和恢复演练仍未完成；不得将 snapshot save/status 当作可恢复性证明。
+
+### Dry-run 与并发
+
+- `08-build-nginx-stream.sh`、`09-deploy-worker-proxy.sh` 的 `--dry-run` 强制覆盖配置值，即使同时传入 `--apply` 也只预览。
+- etcd snapshot 使用本机 etcd 锁；远端 snapshot 命令依次获取节点锁和 etcd 组件锁。
+- etcd、控制平面、containerd、kubelet/kube-proxy、Worker proxy 五类远端安装器统一按“节点锁 → 组件锁”非阻塞获取，冲突返回 75。
+- 该锁仅覆盖各远端安装器进程的生命周期。跨节点集群级锁、独立安装节点之间的 coordinator 锁，以及控制平面服务激活/多节点回滚的完整临界区尚未实现。

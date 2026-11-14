@@ -51,3 +51,26 @@ setup() {
   grep -Fq 'ks-deploy-shell-etcd.lock' "$ROOT/scripts/remote/install-etcd.sh"
   grep -Fq 'flock;' "$ROOT/scripts/remote/install-etcd.sh"
 }
+
+@test "etcd snapshot requires explicit apply when DRY_RUN is false" {
+  config="$BATS_TEST_TMPDIR/snapshot.env"
+  known_hosts="$BATS_TEST_TMPDIR/known_hosts"
+  fakebin="$BATS_TEST_TMPDIR/fakebin"
+  capture="$BATS_TEST_TMPDIR/ssh-calls"
+  cp "$ROOT/cluster.env.example" "$config"
+  sed -i 's/^DRY_RUN=true$/DRY_RUN=false/' "$config"
+  sed -i "s|^SSH_KNOWN_HOSTS_FILE=.*|SSH_KNOWN_HOSTS_FILE=$known_hosts|" "$config"
+  : > "$known_hosts"
+  mkdir -p "$fakebin"
+  : > "$capture"
+  cat > "$fakebin/ssh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$SSH_CAPTURE"
+exit 0
+SH
+  chmod 0755 "$fakebin/ssh"
+  run env SSH_CAPTURE="$capture" PATH="$fakebin:$PATH" "$ROOT/scripts/04-deploy-etcd.sh" --config "$config" snapshot
+  [ "$status" -eq 78 ]
+  [[ "$output" == *"requires explicit --apply"* ]]
+  [ ! -s "$capture" ]
+}

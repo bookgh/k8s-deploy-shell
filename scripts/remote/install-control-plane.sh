@@ -13,6 +13,8 @@ NODE_NAME=${15}; NODE_ADDRESS=${16}; CONTROL_PORT=${17}; CONTROLLER_MANAGER_PORT
 CLUSTER_DOMAIN=${22}; CLUSTER_NAME=${23}; ETCD_ENDPOINTS=${24}
 [[ $EUID -eq 0 ]] || exec sudo -n bash "$0" "$@"
 install -d -o root -g root -m 0755 /run/lock
+exec 8>/run/lock/ks-deploy-shell-node.lock
+flock -n 8 || { echo 'Another deployment mutation is already running on this node' >&2; exit 75; }
 exec 9>/run/lock/ks-deploy-shell-control-plane.lock
 flock -n 9 || { echo 'Another control-plane operation is already running on this node' >&2; exit 75; }
 for cmd in curl sha256sum systemctl install find cmp stat mv cp mktemp date grep sed tr bash openssl flock; do command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }; done

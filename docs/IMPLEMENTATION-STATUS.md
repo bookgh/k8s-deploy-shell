@@ -95,3 +95,31 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 修正测试清单字段索引后，提交 `10d6f405ae5af19c87e6f080aada25c9480cdb0e` 对应 GitHub Actions Shell CI run [43407673512](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43407673512) 成功：Bash Syntax、ShellCheck、shfmt 报告步骤、CFSSL、Helm/Chart lint/render、上游 Chart SHA256、**100 项 Bats 测试**及 Shell-only 门禁全部通过。Kubernetes CLI flag 校验 run [43407673211](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43407673211) 成功。
 
 该 CI 覆盖本轮新增 11 项 restore-preflight 用例（9 项校验器测试、2 项 CLI 测试），但只验证本地合成快照与清单预检；不覆盖真实快照、etcdutl 内部元数据、远端恢复事务、quorum、真实 Rocky Linux 9 节点或生产恢复演练。shfmt 仍为非阻断报告步骤。随后仅更新了本文档，未更改代码。
+
+## 十、M12 部署链路审查与增量修复（2026-11-14）
+
+### 当前审查基线
+
+- 仓库默认分支：`main`；本轮读取的 main HEAD 为 PR base `e88910d90ad0b21d3db44edff4c0a1d1d04ba99b`。
+- M12 分支：`m12/hardening-and-validation`；审查时 HEAD 为 `ba4b80ecdbaa4ba5d69bbbf607a731a31d18b4e2`，相对 main 领先 77、落后 0。
+- PR #1：Open / Draft / 未合并。审查时最新 Shell CI 与 Kubernetes CLI flag workflow 均为 success；这只证明当时提交的自动化检查，不代表本轮新提交已验证，更不代表 Rocky Linux 9 生产验收。
+
+### 已复现并修复
+
+1. **M3/M7 Dry-run CLI 优先级：** `scripts/08-build-nginx-stream.sh` 和 `scripts/09-deploy-worker-proxy.sh` 仅设置 `KS_DRY_RUN=true`，没有设置 `KS_DRY_RUN_OVERRIDE=true`。配置加载会把 `KS_DRY_RUN` 重置为 `DRY_RUN=false`，因此 `--apply --dry-run` 可错误进入 Apply 路径。现已补齐 override；新增 Bats 用例用 `DRY_RUN=false` + `--apply --dry-run` 断言只预览且不创建生成状态文件。
+2. **M5 snapshot 缺少显式授权：** 旧逻辑在 `DRY_RUN=false` 时允许无 `--apply` 执行快照，同时拒绝带 `--apply` 的 snapshot。现已将 snapshot 独立分支化：无 `--apply` 在 Apply 配置下以 78 fail-closed；`--apply --dry-run` 仍只预览；真正快照要求 `--apply` 且 `DRY_RUN=false`。增加 Bats fake-SSH 测试，验证未授权路径 SSH 调用数为 0。
+3. **M6/M7 节点级互斥：** etcd、control-plane、containerd、kubelet/kube-proxy、Worker proxy 远端安装器新增统一节点锁，固定顺序为节点锁 FD 8 → 组件锁 FD 9，冲突退出码 75。etcd snapshot 的每条远端命令也按同一顺序获取节点锁与 etcd 组件锁。
+
+### 本轮新增回归测试
+
+- `tests/etcd.bats`：snapshot 无 `--apply` 且配置 `DRY_RUN=false` 时 fail-closed，fake SSH 调用数为 0。
+- `tests/nginx-proxy.bats`：Nginx 构建与 Worker proxy 的 `--apply --dry-run` 覆盖 `DRY_RUN=false` 配置。
+- `tests/node-lock.bats`：五类远端安装器必须先取得统一节点锁，再取得组件锁。
+
+### 仍未完成 / 本轮未验证
+
+- M5 完整恢复：manifest 可信签名来源、etcdutl 内部元数据交叉校验、成员状态/cluster ID/目录保护、全成员 Prepare/Commit/Rollback、quorum 和隔离恢复演练仍未实现。
+- M3 全入口 Dry-run：本轮只修复已定位的两个入口优先级缺陷；完整入口矩阵、文件树/权限/hash 差异、网络/系统命令 fake-bin 计数及 syscall/strace 审计仍未完成。
+- M6/M7：统一节点锁只覆盖远端安装器进程和 snapshot 单条远端命令，不是跨安装节点分布式锁；控制平面服务启动与 readiness、跨节点批量事务和协调回滚仍未完整纳入临界区。
+- M4 证书轮换/恢复、M6 HA 滚动、M7 Runtime/代理故障恢复、M8–M11 目标环境验证、shfmt 全仓整改仍未完成。
+- 本轮未连接或修改真实集群，未生成生产 CA，未发布 Release，未合并 PR。CI 结果待本轮新提交对应 workflow 完成后再记录。

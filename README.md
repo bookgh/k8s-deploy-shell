@@ -96,3 +96,10 @@ Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官�
 - 清理：`bin/deploy-step.sh --config cluster.env cleanup` 仅预览停止服务操作，数据删除当前禁止。
 - M10：`bin/deploy-step.sh --config cluster.env upgrade-plan` 预览最多跨一个 Minor 版本的升级；在集成测试完成前禁止 apply。
 - M11：`bin/deploy-step.sh --config cluster.env bundle` 预览脱敏离线包。构建要求完整镜像锁和经过校验的缓存；`scripts/16-verify-offline-bundle.sh` 用于验证产物；归档元数据通过 `SOURCE_DATE_EPOCH` 归一化；当前不会自动发布 Release。
+
+## M12 部署链路安全补充（2026-11-14）
+
+- Nginx 构建和 Worker 代理入口的命令行 `--dry-run` 现在优先于配置文件 `DRY_RUN=false` 与 `--apply`；组合使用 `--apply --dry-run` 仍只输出计划，不执行构建、HTTP、SSH 或节点变更。
+- etcd `snapshot` 是远端写操作：必须显式传入 `--apply` 且配置 `DRY_RUN=false`；仅预览时不连接节点。快照操作与 etcd 部署共享本机锁，并在每条远端快照命令上按“节点锁 → etcd 组件锁”顺序获取非阻塞锁。
+- M5 当前仍只有本地 `restore-preflight`，不提供恢复执行；真实快照元数据、成员状态、全成员事务、失败回滚和 quorum 验收均未完成。
+- M5–M7 远端安装器统一先取得节点级锁，再取得组件锁。该锁防止同一节点上的不同组件安装器并发修改，但不构成跨安装节点的集群分布式事务锁；控制平面服务激活、跨节点回滚和多 coordinator 崩溃恢复仍需后续验证。

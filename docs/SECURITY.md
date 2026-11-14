@@ -20,3 +20,11 @@
 SSH 包装器仅接受受限字符集的远端命令参数，不允许空格、Shell 元字符或未验证的动态命令片段进入远端命令字符串。SSH 参数在执行前进行独立校验，不能只依赖配置文件入口校验。
 
 叶证书私钥仅通过启用严格 Host Key 校验的 SSH stdin 传输。远端将数据写入权限为 0600 的临时文件，校验 SHA256 后原子重命名；PKI 所在目录权限为 0700。私钥不通过 SCP/SFTP/rsync 或 Caddy HTTP 传输。根 CA 私钥和 admin 私钥始终保留在安装节点。
+
+## M12 增量安全约束（2026-11-14）
+
+- CLI `--dry-run` 必须设置独立 override 标志，不能被随后加载的 `DRY_RUN=false` 配置覆盖；即使与 `--apply` 同时出现，也必须零副作用。Nginx build/Worker proxy 已补齐该入口。
+- etcd snapshot 属于远端写操作，必须显式 `--apply` 且 `DRY_RUN=false`；预览路径不得执行 SSH。快照命令使用本机 etcd 锁，并对远端命令按节点锁、组件锁的固定顺序获取非阻塞锁。
+- M5–M7 远端安装器统一使用 `/run/lock/ks-deploy-shell-node.lock`，然后获取各自组件锁；冲突返回 75。所有新增嵌套锁必须保持该顺序，禁止反向获取。
+- 节点锁是单节点互斥，不是跨节点分布式事务。多个安装节点同时操作同一集群、控制平面服务启动与 readiness 等跨命令临界区、SSH 断线后的集群级恢复语义仍须 fail-closed 设计和故障注入验证。
+- Bats 合成测试和 GitHub Actions 不能证明 Rocky Linux 9 生产安全性；不得据此宣称 etcd 恢复、quorum 或生产验收完成。

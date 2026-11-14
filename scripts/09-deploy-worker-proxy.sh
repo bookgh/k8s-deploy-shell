@@ -16,7 +16,7 @@ while (($#)); do
   case $1 in
     --config) (($# >= 2)) || exit 2; CONFIG=$2; shift 2 ;;
     --apply) APPLY=true; shift ;;
-    --dry-run) KS_DRY_RUN=true; shift ;;
+    --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
     --help|-h) printf 'Usage: %s [--config FILE] [--dry-run] [--apply] deploy\n' "$0"; exit 0 ;;
     deploy) [[ -z $COMMAND ]] || exit 2; COMMAND=$1; shift ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;

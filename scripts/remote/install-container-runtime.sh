@@ -24,6 +24,8 @@ for path in "$CONFIG_DIR" "$ROOT_DIR" "$STATE_DIR" "$BIN_DIR" "$CNI_BIN_DIR" "$C
 done
 [[ $ROOT_DIR != "$STATE_DIR" && $ROOT_DIR != "$STATE_DIR/"* && $STATE_DIR != "$ROOT_DIR/"* ]] || { echo 'containerd root and state paths must be separate' >&2; exit 2; }
 install -d -o root -g root -m 0755 /run/lock
+exec 8>/run/lock/ks-deploy-shell-node.lock
+flock -n 8 || { echo 'Another deployment mutation is already running on this node' >&2; exit 75; }
 exec 9>/run/lock/ks-container-runtime.lock
 flock -n 9 || { echo 'Container runtime operation already in progress' >&2; exit 75; }
 WORK=$(mktemp -d /var/tmp/ks-container-runtime.XXXXXX)

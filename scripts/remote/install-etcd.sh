@@ -21,6 +21,8 @@ ETCD_AUTO_COMPACTION_RETENTION=${15}
 
 [[ $EUID -eq 0 ]] || exec sudo -n bash "$0" "$@"
 install -d -o root -g root -m 0755 /run/lock
+exec 8>/run/lock/ks-deploy-shell-node.lock
+flock -n 8 || { echo 'Another deployment mutation is already running on this node' >&2; exit 75; }
 exec 9>/run/lock/ks-deploy-shell-etcd.lock
 flock -n 9 || { echo 'Another etcd operation is already running on this node' >&2; exit 75; }
 for command_name in curl tar sha256sum systemctl install find cmp stat id getent useradd groupadd chown chmod mv cp mktemp date grep sed tr bash flock; do
