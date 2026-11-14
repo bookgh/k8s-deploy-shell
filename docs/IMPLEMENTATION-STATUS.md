@@ -129,3 +129,5 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 - 首轮提交 `cb752755f2906c962f656b72c03bc272972f46fb` 的 Shell CI：Bash Syntax、ShellCheck、Helm/chart 校验通过；shfmt 报告发现格式差异（当前为非阻断 warning）；Bats 为 97/104，7 项命令入口测试失败。
 - 失败原因已由 Git tree mode 确认：该提交将 8 个已修改的部署脚本误写为 `100644`，导致脚本不可执行；并非测试断言或部署逻辑失败。已在 `0b1086a730dd3eb6a9632ef86acf478cf50caaee` 恢复这些脚本的 `100755` 模式。
 - 该模式修正后的最终提交 CI 需要重新运行；在新 run 完成前，不将本轮 CI 标记为通过。Kubernetes CLI flag workflow 在首轮提交上通过。
+
+- 最终修正提交 `0b1086a730dd3eb6a9632ef86acf478cf50caaee` 已推送；本记录提交后应以最新分支 HEAD 的 workflow 结果为准，不能沿用首轮失败结果。
