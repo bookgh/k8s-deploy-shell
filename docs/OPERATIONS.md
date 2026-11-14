@@ -1,16 +1,16 @@
-# Operations guide
+# 运维操作指南
 
-## Initial setup
+## 一、初始化配置
 
-1. Copy `cluster.env.example` to `cluster.env` and replace every example value.
-2. Set `CONTROL_PLANE_ENDPOINT` to the external L4 VIP/load-balancer DNS name (or a single Master address for non-HA) and `CONTROL_PLANE_PORT` to the API port. This endpoint is included in the API Server certificate SAN.
-3. Copy `config/nodes.tsv.example` to `config/nodes.tsv`, set every node address/SSH user/port, and update `NODE_INVENTORY_FILE` in `cluster.env`. Provision SSH host keys out of band.
-4. Configure a dedicated known_hosts file; strict checking is mandatory.
-5. Populate `artifacts/manifest.tsv` with immutable HTTPS URLs and independently verified SHA256 values.
-6. Pin component and Helm chart versions after compatibility and image-closure validation.
-7. Run `bin/install.sh --config cluster.env validate`, then `preflight` and `plan`.
+1. 复制 `cluster.env.example` 为 `cluster.env`，逐项替换所有示例值。
+2. 将 `CONTROL_PLANE_ENDPOINT` 设置为外部 L4 VIP/负载均衡器 DNS 名称；非 HA 集群可设置为单个 Master 地址。将 `CONTROL_PLANE_PORT` 设置为 API 端口。该入口会写入 API Server 证书 SAN。
+3. 复制 `config/nodes.tsv.example` 为 `config/nodes.tsv`，填写每个节点的地址、SSH 用户和端口，并在 `cluster.env` 中更新 `NODE_INVENTORY_FILE`。节点 SSH Host Key 必须通过带外可信渠道获取。
+4. 配置专用的 known_hosts 文件；必须通过带外可信渠道录入 Host Key。文件必须是可读普通文件，不得为符号链接；SSH 用户、端口、超时、重试次数和退避值须通过配置校验。
+5. 在 `artifacts/manifest.tsv` 中填写不可变 HTTPS 地址及独立核验的 SHA256。
+6. 完成兼容性和镜像闭包验证后，锁定组件及 Helm Chart 版本。
+7. 依次执行 `bin/install.sh --config cluster.env validate`、`preflight` 和 `plan`。
 
-## Commands
+## 二、常用命令
 
 ```bash
 bin/install.sh --config cluster.env validate
@@ -27,27 +27,28 @@ bin/deploy-step.sh --config cluster.env etcd-members
 bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-`DRY_RUN=true` is the example default and is propagated into artifact preparation and step entrypoints. The CLI `--dry-run` flag forces preview mode. Dry-run must not create cache directories, lock files, temporary files, keys, SSH connections or host state.
+示例配置默认 `DRY_RUN=true`，并将该设置传递给制品准备和部署步骤入口。命令行 `--dry-run` 可强制进入预览模式。Dry-run 不得创建缓存目录、锁文件、临时文件或密钥，不得建立 SSH 连接，也不得修改主机状态。
 
-`prepare` is the online artifact-fetch phase. It requires a complete manifest and only accepts HTTPS sources with SHA256 verification. Set `DRY_RUN=false` deliberately to download artifacts. Then run `scripts/00-prepare-install-node.sh --config cluster.env verify-cache` and review the Caddy preview. Caddy installation additionally requires `DRY_RUN=false` and explicit `--apply`.
+`prepare` 是在线制品获取阶段，要求制品清单完整，只接受 HTTPS 来源并执行 SHA256 校验。只有明确设置 `DRY_RUN=false` 才会下载制品。完成后执行 `scripts/00-prepare-install-node.sh --config cluster.env verify-cache`，并检查 Caddy 配置预览。安装 Caddy 同样要求 `DRY_RUN=false` 和显式 `--apply`。
 
-System initialization remains preview-only. PKI generation creates three independent root CAs and a separate ServiceAccount keypair. Existing non-empty PKI is never overwritten. Leaf keys are delivered by strict-HostKey SSH stdin and are not exposed through Caddy.
+系统初始化当前仅提供预览入口。PKI 生成会创建三个相互独立的根 CA，以及独立的 ServiceAccount 密钥对。已有非空 PKI 目录不会被覆盖。叶证书私钥仅通过严格 Host Key 校验的 SSH stdin 分发，不会暴露在 Caddy 服务中。
 
-## etcd M5
+## 三、etcd（M5）
 
-The etcd binary is pinned to v3.7.3 with the upstream GitHub release asset digest. `versions.yaml` and `artifacts/manifest.tsv` must agree. Deploying etcd requires:
-- Rocky Linux 9 / x86_64 target nodes in the configured etcd member list.
-- Successful PKI generation and `distribute-pki`.
-- A running Caddy artifact server and verified local cache.
-- `DRY_RUN=false`, a dedicated known_hosts file, and explicit `--apply`.
+etcd 二进制固定为 v3.7.3，并校验上游 GitHub Release 制品摘要。`versions.yaml` 与 `artifacts/manifest.tsv` 必须保持一致。部署 etcd 前必须满足：
 
-Preview first:
+- 目标节点为 Rocky Linux 9 / x86_64，且位于配置的 etcd 成员清单中。
+- 已成功生成 PKI 并完成 `distribute-pki`。
+- Caddy 制品服务已启动，本地缓存已经校验。
+- 已设置 `DRY_RUN=false`，配置专用 known_hosts 文件，并显式传入 `--apply`。
+
+先预览：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run etcd
 ```
 
-Only after reviewing the plan and confirming this is a new cluster with empty etcd data directories:
+只有在审核部署计划，并确认这是一个全新集群且 etcd 数据目录为空之后，才允许执行：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --apply etcd
@@ -56,93 +57,137 @@ bin/deploy-step.sh --config cluster.env etcd-members
 bin/deploy-step.sh --config cluster.env etcd-snapshot
 ```
 
-The installer refuses to initialize over non-empty data directories or mismatched active members. It does not automatically add/remove members or restore snapshots. Snapshot files remain on an etcd member under `ETCD_BACKUP_DIR`; copy them to independently managed encrypted backup storage and test restore in an isolated environment. A successful systemd activation is not proof of quorum; use `etcd-health` and `etcd-members`.
+安装程序拒绝在非空数据目录或活动成员不匹配的情况下初始化集群。它不会自动添加/删除成员。当前提供快照保存、状态检查，以及本地只读 `restore-preflight` 清单预检；不提供自动或受保护的快照恢复子命令，不得将预检通过或“快照保存成功”视为恢复能力已实现。快照文件暂存在 etcd 成员的 `ETCD_BACKUP_DIR`；必须将其复制到独立管理的加密备份存储，并按 etcd 官方流程在隔离环境中完成恢复演练后，才能把恢复能力标记为已验证。
 
-## Honest status
+本地恢复清单预检（只读，不连接集群）：
 
-A successful config validation or plan is not evidence of a deployed cluster. See `docs/IMPLEMENTATION-STATUS.md`. M5 code has not yet been validated on a real Rocky Linux 9 multi-member cluster.
+```bash
+scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \
+  --snapshot /secure/backup/cluster.db \
+  --manifest /secure/backup/restore.manifest
+```
 
-## Container runtime deployment (M7 partial)
+清单当前要求 12 个 TSV 键：`schema_version`、`cluster_name`、`etcd_version`、`snapshot_sha256`、`snapshot_revision`、`snapshot_hash`、`snapshot_total_keys`、`snapshot_total_size`、`snapshot_file_size`、`cluster_id`、`members`、`created_at_utc`。成员值必须与当前 inventory 生成的 initial-cluster 字符串完全一致。此命令只验证文件类型/权限、字段格式、集群/版本/成员匹配、SHA256 和文件字节数；不会生成 manifest，也不会运行 `etcdutl snapshot status`。执行正式恢复前仍须交叉核对 etcdutl 的 HASH/REVISION/TOTAL KEYS/TOTAL SIZE、快照来源真实性、成员拓扑、证书、磁盘和 SELinux 状态。当前 manifest 没有签名验证，SHA256 sidecar 不能防御同权限主体篡改。
+Systemd 启动成功不代表 quorum 已建立，必须使用 `etcd-health` 和 `etcd-members` 检查。
 
-The runtime stage currently supports **containerd only**. It pins the static containerd archive, runc binary and CNI plugin archive through `versions.yaml` and `artifacts/manifest.tsv`. The installer validates archive SHA256 values before extraction, configures containerd v3, uses the systemd cgroup driver, and points the CRI plugin at the configured CNI directories.
+## 四、如实报告实施状态
 
-1. Copy `cluster.env.example` to `cluster.env` and review the node inventory and all directory paths.
-2. Confirm the artifact cache contains the three runtime archives and the Caddy HTTP service serves that same cache root.
-3. Confirm every target's SSH host key is already trusted in the configured known_hosts file. Targets must be Rocky Linux 9 x86_64 and have root SSH access or non-interactive sudo.
-4. Run a read-only plan:
+配置校验或部署计划成功，不代表集群已经部署成功。请查阅 `docs/IMPLEMENTATION-STATUS.md`。M5 代码尚未在真实 Rocky Linux 9 多成员集群上完成验证。
+
+## 五、容器运行时部署（M7，部分完成）
+
+当前 Runtime 阶段仅支持 **containerd**。containerd 静态归档、runc 二进制和 CNI 插件归档均通过 `versions.yaml` 与 `artifacts/manifest.tsv` 锁定。安装程序在解包前校验归档 SHA256，配置 containerd v3、systemd cgroup 驱动，并将 CRI 插件指向已配置的 CNI 目录。
+
+1. 复制 `cluster.env.example` 为 `cluster.env`，审核节点清单和所有目录路径。
+2. 确认制品缓存包含三个 Runtime 归档，且 Caddy HTTP 服务使用相同缓存根目录。
+3. 确认每个目标节点的 SSH Host Key 已存在于指定 known_hosts 文件中。目标系统必须为 Rocky Linux 9 x86_64，并具备 root SSH 权限或免交互 sudo 权限。
+4. 执行只读预览：
 
    ```bash
    bin/deploy-step.sh runtime --config cluster.env --dry-run
    ```
 
-5. To apply, explicitly set `DRY_RUN=false` in `cluster.env`, then run:
+5. 如需实际部署，必须在 `cluster.env` 中显式设置 `DRY_RUN=false`，然后执行：
 
    ```bash
    bin/deploy-step.sh runtime --config cluster.env --apply
    ```
 
-This stage does not pull container images, configure Calico, start kubelet/kube-proxy, or install the Worker Nginx stream proxy. The pause image is pinned in `versions.yaml` and must be included in the later verified image-import closure before workloads are started. The installer refuses to replace differing existing containerd binaries/configuration; upgrades require the separate upgrade workflow.
+该阶段不会拉取容器镜像或配置 Calico，也不会启动 kubelet/kube-proxy；Worker Nginx stream 代理由独立的 `build-nginx` / `worker-proxy` 步骤构建和部署。pause 镜像已在 `versions.yaml` 中锁定，启动工作负载前必须将其纳入后续经过校验的镜像导入闭包。安装程序拒绝替换内容不同的现有 containerd 二进制或配置；升级必须走独立升级流程。
 
-## Kubelet and kube-proxy preparation (M7 partial)
+## 六、kubelet 与 kube-proxy 准备（M7，部分完成）
 
-After the containerd runtime and PKI distribution stages are complete, prepare the kubelet and kube-proxy binaries and per-node credentials:
+containerd Runtime 和 PKI 分发完成后，可准备 kubelet、kube-proxy 二进制及逐节点凭据：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 ```
 
-The apply path requires `DRY_RUN=false`, a verified local `kubectl`, the pinned kubelet/kube-proxy artifacts in the Caddy cache, and node certificates already distributed by `distribute-pki`. Kubelet identities are checked against `system:node:<node>` / `system:nodes`; kube-proxy uses `system:kube-proxy` / `system:node-proxier`. Generated kubeconfigs embed client credentials and are transferred only over the verified SSH channel, never through the public artifact HTTP root.
+实际执行要求 `DRY_RUN=false`，本地 `kubectl` 已校验、Caddy 缓存中存在锁定版本的 kubelet/kube-proxy 制品，并且节点证书已通过 `distribute-pki` 分发。kubelet 身份必须匹配 `system:node:<node>` / `system:nodes`；kube-proxy 身份必须匹配 `system:kube-proxy` / `system:node-proxier`。生成的 kubeconfig 内嵌客户端凭据，只能通过已验证的 SSH 通道传输，不能放入公开制品 HTTP 根目录。
 
-Both kubeconfigs point to `https://127.0.0.1:<CONTROL_PLANE_PORT>`. On Workers this endpoint is intentionally unusable until the local Nginx stream proxy is deployed. The stage installs binaries and disabled systemd units but does not enable or start kubelet/kube-proxy. Do not start these services until the Worker proxy and node-service activation stages are complete.
+两个 kubeconfig 的 API 地址均为 `https://127.0.0.1:<CONTROL_PLANE_PORT>`。Worker 在本地 Nginx stream 代理部署前无法使用该地址。此阶段只安装二进制和处于 disabled 状态的 Systemd 单元，不会 enable 或 start kubelet/kube-proxy。Worker 代理和节点服务激活阶段完成前，不得启动这两个服务。
 
-## Nginx Worker API proxy (M7 partial)
+## 七、Nginx Worker API 代理（M7，部分完成）
 
-Build the stream-only Nginx binary on the Rocky Linux 9 x86_64 installation node from the pinned official source archive:
+在 Rocky Linux 9 x86_64 安装节点上，根据锁定的官方源码归档构建仅启用 stream 的 Nginx 二进制：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run build-nginx
 ```
 
-After reviewing the plan, set `DRY_RUN=false` in `cluster.env` and run `bin/deploy-step.sh --config cluster.env --apply build-nginx`. The generated archive and its SHA256/source provenance are recorded in the local-only `state/generated-artifacts.tsv`.
+审核计划后，在 `cluster.env` 中设置 `DRY_RUN=false`，再执行 `bin/deploy-step.sh --config cluster.env --apply build-nginx`。生成的归档及其 SHA256/来源记录写入仅保留在本地的 `state/generated-artifacts.tsv`。
 
-Then deploy the proxy to Workers:
+然后向 Worker 部署代理：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run worker-proxy
 bin/deploy-step.sh --config cluster.env --apply worker-proxy
 ```
 
-The Worker listener is restricted to `127.0.0.1:<CONTROL_PLANE_PORT>`; Nginx uses stream TCP passthrough, so API-server TLS remains end-to-end. Upstreams are the configured Master IPs. Open-source Nginx provides passive connection-failure handling here; no active health-check directive is assumed. The service is enabled and started by this stage, but kubelet/kube-proxy remain disabled until the M8 add-on stage and explicit node activation.
+Worker 监听地址限制为 `127.0.0.1:<CONTROL_PLANE_PORT>`。Nginx 使用 stream TCP 透传，API Server TLS 保持端到端；上游为配置的 Master IP。开源 Nginx 在此处只提供被动连接失败处理，不假设存在主动健康检查指令。该阶段会 enable 并启动代理服务，但 kubelet/kube-proxy 仍保持禁用，直到 M8 Addons 阶段和显式节点激活步骤完成。
 
+## 八、Addons（M8，部分完成且受门禁保护）
 
-## Addons M8 (partial / guarded)
+M8 使用固定版本 Chart 和本地 NodeLocal DNSCache Chart。当前仅支持 `IMAGE_MODE=local-import`；Harbor 和在线镜像模式被有意阻断。Calico 3.33 要求镜像锁至少包含 operator（`quay.io/tigera/operator:v1.44.0`）、`quay.io/calico/calico:v3.33.0`、`quay.io/calico/node:v3.33.0`、`quay.io/calico/third-party-cni-plugins:v3.33.0` 和 `quay.io/calico/typha:v3.33.0`。还必须锁定 `versions.yaml` 中的 Runtime sandbox 镜像（`registry.k8s.io/pause:3.10.1`）和 M9 测试镜像（`docker.io/library/busybox:1.37.0`）。稳定版 CRD 包为 `crd.projectcalico.org.v1`。operator 管理的 Pod 设置 `Installation.imagePullPolicy: Never`；CoreDNS、NodeLocal 和 M9 测试 Pod 在归档导入后同样使用 `Never`。
 
-M8 uses pinned charts and a local NodeLocal DNSCache chart. The current implementation supports only `IMAGE_MODE=local-import`; Harbor and online image modes are intentionally blocked. Calico 3.33 requires pinned rows for the operator (`quay.io/tigera/operator:v1.44.0`), `quay.io/calico/calico:v3.33.0`, `quay.io/calico/node:v3.33.0`, `quay.io/calico/third-party-cni-plugins:v3.33.0` and `quay.io/calico/typha:v3.33.0`. Also lock the runtime sandbox image from `versions.yaml` (`registry.k8s.io/pause:3.10.1`) and M9 test image (`docker.io/library/busybox:1.37.0`). The stable CRD package is `crd.projectcalico.org.v1`. `Installation.imagePullPolicy: Never` is set for operator-managed pods; CoreDNS, NodeLocal and M9 test pods also use `Never` after their archives are imported. Create `images.lock.tsv` from the example only after rendering all charts and auditing all operator-generated images. Each image row must contain repository:tag, OCI digest, archive filename, archive SHA256 and linux/amd64. Copy verified archives into the Caddy cache, then run:
+只有在渲染全部 Chart 并审计所有 operator 动态生成镜像后，才可创建 `images.lock.tsv`。每行必须包含 repository:tag、OCI digest、归档文件名、归档 SHA256 和 linux/amd64 平台。将校验后的归档复制到 Caddy 缓存，然后执行：
 
 ```bash
 bin/deploy-step.sh --config cluster.env --dry-run addons
 bin/deploy-step.sh --config cluster.env addons verify
 ```
 
-Only after completing the full image closure audit, reviewing the plan, confirming the pinned chart compatibility and setting `DRY_RUN=false`, may an operator run `bin/deploy-step.sh --config cluster.env --apply addons`. This stage activates kubelet before Calico bootstrap and kube-proxy after Calico becomes Available, then installs CoreDNS and NodeLocal DNSCache. This flow has not been validated on a real Rocky Linux 9 cluster and must not be treated as production-ready until M9 acceptance passes.
+只有完成完整镜像闭包审计、审核部署计划、确认 Chart 兼容性并设置 `DRY_RUN=false` 后，才允许执行 `bin/deploy-step.sh --config cluster.env --apply addons`。该流程会先激活 kubelet，再引导 Calico；Calico 状态变为 Available 后才启动 kube-proxy，随后安装 CoreDNS 和 NodeLocal DNSCache。该流程尚未在真实 Rocky Linux 9 集群验证；M9 验收通过前不得视为可用于生产。
 
+## 九、M9 集群验收报告（只读）
 
-## M9 acceptance report (read-only)
-
-Set `DRY_RUN=false` only after the cluster is intentionally available for authenticated checks, then run:
+仅当集群已按计划启动且允许执行认证检查时，才设置 `DRY_RUN=false`，然后运行：
 
 ```bash
 bin/deploy-step.sh --config cluster.env verify
 ```
 
-The checker writes mode-0600 text and JSON reports under `output/reports` and verifies that all system namespace pod image references are covered by the digest/archive lock. For explicit E2E tests, first pin/import `m9-test-busybox` (`docker.io/library/busybox:1.37.0`) in `images.lock.tsv`, then run `scripts/10-cluster-check.sh --config cluster.env --e2e`. This creates a temporary namespace and two pods pinned to different nodes with `imagePullPolicy: Never`; it tests Pod IP traffic, DNS, ClusterIP, Service DNS, NodePort and NetworkPolicy deny/recovery, then schedules namespace deletion on exit. Without `--e2e`, these checks remain NOT_VERIFIED and overall status is PARTIAL.
+检查器会在 `output/reports` 下写入权限为 0600 的文本和 JSON 报告，并验证系统命名空间 Pod 镜像引用是否全部包含在 digest/归档锁中。执行显式 E2E 测试前，先在 `images.lock.tsv` 中锁定并导入 `m9-test-busybox`（`docker.io/library/busybox:1.37.0`），再执行 `scripts/10-cluster-check.sh --config cluster.env --e2e`。该命令会创建临时命名空间和两个调度到不同节点、使用 `imagePullPolicy: Never` 的 Pod，测试 Pod IP 通信、DNS、ClusterIP、Service DNS、NodePort 和 NetworkPolicy 拒绝/恢复，并在退出时安排删除临时命名空间。不带 `--e2e` 时，这些项目保持 NOT_VERIFIED，总体状态为 PARTIAL。
 
-## Cleanup (stop only)
+## 十、清理（仅停止服务）
 
-Preview with `bin/deploy-step.sh --config cluster.env cleanup`. To stop Kubernetes services, set `DRY_RUN=false` and explicitly add `--apply` to `scripts/13-clean-cluster.sh stop`. The cleanup command never deletes etcd, containerd, PKI, kubeconfig, Harbor or workload data. `delete-data` is blocked.
+使用 `bin/deploy-step.sh --config cluster.env cleanup` 预览清理计划。若要停止 Kubernetes 服务，必须设置 `DRY_RUN=false`，并显式向 `scripts/13-clean-cluster.sh stop` 传入 `--apply`。清理命令不会删除 etcd、containerd、PKI、kubeconfig、Harbor 或工作负载数据。`delete-data` 当前被阻断。
 
-## Upgrade planner and offline bundle
+## 十一、升级规划与离线包
 
-Preview the upgrade sequence with `bin/deploy-step.sh --config cluster.env upgrade-plan`; pass `--target-version vX.Y.Z` directly to `scripts/14-upgrade.sh` for a target-specific plan. Actual upgrade execution is blocked pending Rocky Linux 9 HA/restore/rollback tests.
+使用 `bin/deploy-step.sh --config cluster.env upgrade-plan` 预览升级顺序；针对指定目标版本，可直接向 `scripts/14-upgrade.sh` 传入 `--target-version vX.Y.Z`。在 Rocky Linux 9 HA、恢复和回滚测试完成前，实际升级执行保持阻断。
 
-Preview bundle requirements with `bin/deploy-step.sh --config cluster.env bundle`. Bundle creation requires `DRY_RUN=false`, explicit `--apply`, a complete `images.lock.tsv`, verified artifact cache and a sanitized cache with no symlinks or sensitive files. The builder normalizes archive mtimes using `SOURCE_DATE_EPOCH` (defaults to the source commit time), emits a portable relative-path SHA256 sidecar and invokes `scripts/16-verify-offline-bundle.sh` before reporting success. Verify transferred bundles with `scripts/16-verify-offline-bundle.sh /path/to/bundle.tar.gz`. It excludes cluster secrets and does not publish a GitHub Release.
+使用 `bin/deploy-step.sh --config cluster.env bundle` 预览离线包要求。创建离线包必须设置 `DRY_RUN=false)、显式传入 `--apply)，并提供完整的 `images.lock.tsv`、已验证的制品缓存，以及不含符号链接和敏感文件的缓存目录。构建器使用 `SOURCE_DATE_EPOCH` 归一化归档 mtime（默认采用源提交时间），生成相对路径 SHA256 sidecar，并在报告成功前调用 `scripts/16-verify-offline-bundle.sh`。传输后使用 `scripts/16-verify-offline-bundle.sh /path/to/bundle.tar.gz` 验证。离线包排除集群密钥，不会自动发布 GitHub Release。
+
+## 十二、M12 本轮安全门禁与操作语义（2026-11-14）
+
+### etcd 快照
+
+`snapshot` 会在 etcd 成员节点写入备份文件，因此必须显式授权：
+
+```bash
+# 只读预览，不连接节点
+scripts/04-deploy-etcd.sh --config cluster.env snapshot
+
+# 真正执行：配置 DRY_RUN=false，并显式 --apply
+scripts/04-deploy-etcd.sh --config cluster.env --apply snapshot
+```
+
+`--dry-run` 优先级高于配置和 `--apply`。若配置为 `DRY_RUN=false` 却未传 `--apply`，命令以退出码 78 拒绝执行。快照前置的 etcd 健康/成员状态、快照后自动 manifest、独立备份复制和恢复演练仍未完成；不得将 snapshot save/status 当作可恢复性证明。
+
+### Dry-run 与并发
+
+- `08-build-nginx-stream.sh`、`09-deploy-worker-proxy.sh` 的 `--dry-run` 强制覆盖配置值，即使同时传入 `--apply` 也只预览。
+- etcd snapshot 使用本机 etcd 锁；远端 snapshot 命令依次获取节点锁和 etcd 组件锁。
+- etcd、控制平面、containerd、kubelet/kube-proxy、Worker proxy 五类远端安装器统一按“节点锁 → 组件锁”非阻塞获取，冲突返回 75。
+- 该锁仅覆盖各远端安装器进程的生命周期。跨节点集群级锁、独立安装节点之间的 coordinator 锁，以及控制平面服务激活/多节点回滚的完整临界区尚未实现。
+
+### SSH Host Key 文件权限
+
+`SSH_KNOWN_HOSTS_FILE` 必须是当前用户或 root 持有的普通文件，不能是符号链接，也不能对 group/world 可写。建议初始化后设置：
+
+```bash
+chmod 0600 config/known_hosts
+```
+
+SSH 仍使用 `BatchMode=yes`、`StrictHostKeyChecking=yes` 和显式 `UserKnownHostsFile`；不得通过关闭 Host Key 校验绕过首次连接或密钥轮换问题。

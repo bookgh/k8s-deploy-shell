@@ -1,12 +1,66 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 IFS=$'\n\t'
+
+ks_ssh_validate_parameters() {
+  local port=${SSH_PORT:-22} user=${SSH_USER:-root}
+  local timeout=${SSH_CONNECT_TIMEOUT:-8} retries=${SSH_RETRIES:-3}
+  local backoff=${SSH_BACKOFF_SECONDS:-2}
+
+  [[ $user =~ ^[a-z_][a-zA-Z0-9_-]*[$]?$ ]] || {
+    ks_log ERROR 'Invalid SSH user'
+    return 2
+  }
+  [[ $port =~ ^[0-9]{1,5}$ ]] && ((10#$port >= 1 && 10#$port <= 65535)) || {
+    ks_log ERROR 'SSH port must be an integer from 1 to 65535'
+    return 2
+  }
+  [[ $timeout =~ ^[0-9]+$ ]] && ((10#$timeout >= 1 && 10#$timeout <= 120)) || {
+    ks_log ERROR 'SSH connect timeout must be from 1 to 120 seconds'
+    return 2
+  }
+  [[ $retries =~ ^[0-9]+$ ]] && ((10#$retries >= 1 && 10#$retries <= 10)) || {
+    ks_log ERROR 'SSH retries must be from 1 to 10'
+    return 2
+  }
+  [[ $backoff =~ ^[0-9]+$ ]] && ((10#$backoff <= 30)) || {
+    ks_log ERROR 'SSH backoff must be from 0 to 30 seconds'
+    return 2
+  }
+}
+
+ks_ssh_validate_known_hosts() {
+  local known_hosts=${SSH_KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}
+  local mode owner uid
+  [[ -f $known_hosts && ! -L $known_hosts && -r $known_hosts ]] || {
+    ks_log ERROR "Known hosts must be a readable regular file, not a symlink: $known_hosts"
+    return 2
+  }
+  IFS=' ' read -r mode owner < <(stat -c '%a %u' -- "$known_hosts") || {
+    ks_log ERROR "Cannot inspect known_hosts ownership and mode: $known_hosts"
+    return 2
+  }
+  uid=$(id -u 2>/dev/null) || {
+    ks_log ERROR 'Cannot determine effective UID for known_hosts validation'
+    return 2
+  }
+  [[ $mode =~ ^[0-7]{3,4}$ && ( $owner == "$uid" || $owner == 0 ) ]] || {
+    ks_log ERROR "Known hosts must be owned by the current user or root: $known_hosts"
+    return 2
+  }
+  (( (8#$mode & 0022) == 0 )) || {
+    ks_log ERROR "Known hosts must not be group/world writable: $known_hosts"
+    return 2
+  }
+}
+
 ks_ssh() {
   local host=${1:?host required}; shift
   local known_hosts=${SSH_KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}
   local remote_command='' arg
   [[ $host =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]] || { ks_log ERROR 'Invalid SSH host token'; return 2; }
   (($# > 0)) || { ks_log ERROR 'Remote command required'; return 2; }
+  ks_ssh_validate_parameters || return $?
   for arg in "$@"; do
     [[ $arg =~ ^[A-Za-z0-9_./:=,@+%-]+$ ]] || { ks_log ERROR 'Unsafe remote argument; only restricted tokens are accepted'; return 2; }
     remote_command+="$arg "
@@ -17,7 +71,7 @@ ks_ssh() {
     printf '[dry-run] ssh'; printf ' %q' "${args[@]}" "${SSH_USER:-root}@$host" "$remote_command"; printf '\n'
     return 0
   fi
-  [[ -r $known_hosts ]] || { ks_log ERROR "Known hosts file missing: $known_hosts"; return 2; }
+  ks_ssh_validate_known_hosts || return $?
   ks_retry "${SSH_RETRIES:-3}" "${SSH_BACKOFF_SECONDS:-2}" ssh "${args[@]}" "${SSH_USER:-root}@$host" "$remote_command"
 }
 
@@ -31,6 +85,7 @@ ks_ssh_install_file() {
   [[ -f $source_file && ! -L $source_file && -r $source_file ]] || { ks_log ERROR "Source file must be a readable regular file: $source_file"; return 2; }
   [[ $destination =~ ^/[A-Za-z0-9._/-]+$ && $destination != / && $destination != *'/../'* && $destination != */.. ]] || { ks_log ERROR "Unsafe remote destination: $destination"; return 2; }
   [[ $mode == 0600 || $mode == 0644 ]] || { ks_log ERROR 'Only remote modes 0600 and 0644 are supported'; return 2; }
+  ks_ssh_validate_parameters || return $?
   source_mode=$(stat -c '%a' "$source_file")
   if [[ $mode == 0600 && $source_mode != 600 && $source_mode != 400 ]]; then
     ks_log ERROR 'Private-key source file must already be mode 0600 or 0400'
@@ -44,7 +99,7 @@ ks_ssh_install_file() {
     ks_log INFO "DRY-RUN: would stream $source_file over strict SSH to $host:$destination mode=$mode sha256=$local_sha"
     return 0
   fi
-  [[ -r $known_hosts ]] || { ks_log ERROR "Known hosts file missing: $known_hosts"; return 2; }
+  ks_ssh_validate_known_hosts || return $?
   ssh_args=(-p "${SSH_PORT:-22}" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout="${SSH_CONNECT_TIMEOUT:-8}" -o ConnectionAttempts=1 -o ServerAliveInterval=15 -o ServerAliveCountMax=2)
   if [[ ${SSH_USER:-root} == root ]]; then
     ks_ssh "$host" install -d -o root -g root -m 0700 "$remote_dir"

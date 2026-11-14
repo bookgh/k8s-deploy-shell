@@ -6,7 +6,12 @@ umask 077
 K8S_VERSION=$1; KUBELET_FILE=$2; KUBELET_SHA=$3; KUBE_PROXY_FILE=$4; KUBE_PROXY_SHA=$5
 HTTP_URL=$6; BIN_DIR=$7; CONFIG_DIR=$8; KUBELET_DATA_DIR=$9; CONTAINERD_STATE_DIR=${10}; NODE_NAME=${11}; NODE_IP=${12}
 if [[ $EUID -ne 0 ]]; then command -v sudo >/dev/null 2>&1 || { echo 'sudo is required for non-root SSH users' >&2; exit 127; }; exec sudo -n bash "$0" "$@"; fi
-for cmd in curl sha256sum install systemctl cmp mktemp rm openssl awk grep stat sed tr; do command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }; done
+install -d -o root -g root -m 0755 /run/lock
+exec 8>/run/lock/ks-deploy-shell-node.lock
+flock -n 8 || { echo 'Another deployment mutation is already running on this node' >&2; exit 75; }
+exec 9>/run/lock/ks-deploy-shell-kubelet-proxy.lock
+flock -n 9 || { echo 'Another kubelet/kube-proxy operation is already running on this node' >&2; exit 75; }
+for cmd in curl sha256sum install systemctl cmp mktemp rm openssl awk grep stat sed tr flock; do command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }; done
 [[ -r /etc/os-release ]] || exit 2
 remote_os=$(sed -n 's/^ID=//p' /etc/os-release | tr -d '"')
 remote_version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release | tr -d '"')

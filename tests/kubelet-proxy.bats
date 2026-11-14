@@ -24,3 +24,10 @@ setup() {
 @test "PKI distribution honors configured kubelet data directory" {
   grep -Fq '$KUBELET_DATA_DIR/pki' "$ROOT/scripts/03-distribute-pki.sh"
 }
+
+@test "remote kubelet and proxy installers serialize node mutations" {
+  grep -Fq 'flock -n 9' "$ROOT/scripts/remote/install-kubelet-kubeproxy.sh"
+  grep -Fq 'ks-deploy-shell-kubelet-proxy.lock' "$ROOT/scripts/remote/install-kubelet-kubeproxy.sh"
+  grep -Fq 'flock -n 9' "$ROOT/scripts/remote/install-worker-proxy.sh"
+  grep -Fq 'ks-deploy-shell-worker-proxy.lock' "$ROOT/scripts/remote/install-worker-proxy.sh"
+}

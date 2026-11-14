@@ -12,7 +12,12 @@ HTTP_URL=${10}; BIN_DIR=${11}; CONFIG_DIR=${12}; LOG_DIR=${13}; DATA_DIR=${14}
 NODE_NAME=${15}; NODE_ADDRESS=${16}; CONTROL_PORT=${17}; CONTROLLER_MANAGER_PORT=${18}; SCHEDULER_PORT=${19}; SERVICE_CIDR=${20}; POD_CIDR=${21}
 CLUSTER_DOMAIN=${22}; CLUSTER_NAME=${23}; ETCD_ENDPOINTS=${24}
 [[ $EUID -eq 0 ]] || exec sudo -n bash "$0" "$@"
-for cmd in curl sha256sum systemctl install find cmp stat mv cp mktemp date grep sed tr bash openssl; do command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }; done
+install -d -o root -g root -m 0755 /run/lock
+exec 8>/run/lock/ks-deploy-shell-node.lock
+flock -n 8 || { echo 'Another deployment mutation is already running on this node' >&2; exit 75; }
+exec 9>/run/lock/ks-deploy-shell-control-plane.lock
+flock -n 9 || { echo 'Another control-plane operation is already running on this node' >&2; exit 75; }
+for cmd in curl sha256sum systemctl install find cmp stat mv cp mktemp date grep sed tr bash openssl flock; do command -v "$cmd" >/dev/null 2>&1 || { echo "Missing remote command: $cmd" >&2; exit 127; }; done
 [[ -r /etc/os-release ]] || exit 2
 remote_os=$(sed -n 's/^ID=//p' /etc/os-release | tr -d '"')
 remote_version=$(sed -n 's/^VERSION_ID=//p' /etc/os-release | tr -d '"')

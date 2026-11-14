@@ -10,7 +10,7 @@
 - Shell-only：禁止 Python、Perl、Ruby、Node.js、Go 承担项目逻辑。
 - Worker kubeconfig API endpoint 必须为 https://127.0.0.1:6443。
 - 部署阶段不访问公网；配置驱动版本、IP、CIDR、端口、目录和镜像。
-- 幂等、可审计、可恢复；以真实健康状态验收。
+- 幂等、可审计、可恢复；安装节点和关键远端组件使用并发锁；以真实健康状态验收。
 
 ## 文档
 
@@ -31,7 +31,7 @@ bin/install.sh --config cluster.env plan
 
 `CONTROL_PLANE_ENDPOINT` 配置外部 API 入口（HA 时应指向 L4 VIP/LB），`KUBERNETES_CONFIG_DIR`、`KUBERNETES_LOG_DIR`、`KUBERNETES_DATA_DIR` 和 `KUBERNETES_BIN_DIR` 配置远端路径。节点地址、角色、SSH 用户和端口由 `config/nodes.tsv` 维护；先复制 `config/nodes.tsv.example` 并更新 `NODE_INVENTORY_FILE`。示例配置默认 `DRY_RUN=true`。制品准备也默认只输出下载计划；只有显式设置 `DRY_RUN=false` 才会下载。命令行 `--dry-run` 可强制预览。
 
-M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元；Worker Nginx stream 代理和服务激活仍未完成。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更或恢复。
+M2 包含安装节点预检、制品清单校验和受保护的 Caddy Systemd 安装入口；M3 包含基于节点清单的 SSH/OS 只读预检和 PKI 安全分发；M4 包含 PKI 生成。M5 增加 etcd 3.7.3 的新集群部署、mTLS、Systemd、健康/成员检查和快照入口。M6 增加 API Server、controller-manager、scheduler 的二进制/Systemd 安装和 kubeconfig 生成入口。M7 已增加 containerd/runc/CNI 远程 CRI 安装、kubelet/kube-proxy 二进制、逐节点 kubeconfig 与禁用状态的 systemd 单元，以及 Worker Nginx stream loopback TCP 代理部署入口；kubelet/kube-proxy 服务激活仍受 Addons 安装和集群验收门禁控制。etcd 现有数据目录默认 fail-closed，不执行隐式成员变更；当前提供快照保存和本地 restore-preflight 元数据预检入口；尚无受保护的快照恢复子命令。
 
 ## etcd M5 使用顺序
 
@@ -46,6 +46,17 @@ bin/deploy-step.sh --config cluster.env --dry-run etcd
 
 真实部署必须先完成节点/HostKey/PKI 检查，并显式设置 `DRY_RUN=false`、传入 `--apply`。不得在已有 etcd 数据目录上运行新集群初始化。
 
+恢复前置文件检查（只读，不会恢复或连接节点）：
+
+```bash
+scripts/04-deploy-etcd.sh --config cluster.env restore-preflight \
+  --snapshot /secure/backup/cluster.db \
+  --manifest /secure/backup/restore.manifest
+```
+
+该命令只验证本地 snapshot 与 TSV manifest 的 SHA256、文件大小、集群/版本/成员拓扑和字段格式。项目尚未提供 manifest 自动生成或受保护的 etcd restore 命令；执行该预检不代表恢复准备完成。
+
+
 ## 安全与状态
 
 默认保留 SELinux Enforcing，不全局关闭防火墙、不 flush 规则。已有 PKI/etcd/业务数据不得覆盖或删除。私钥不进入 Git 或 HTTP 根目录。真实 Rocky Linux 9 集群验证、etcd quorum 和快照恢复尚未完成；请以 docs/IMPLEMENTATION-STATUS.md 为准。
@@ -59,7 +70,7 @@ bin/deploy-step.sh --config cluster.env --dry-run control-plane
 bin/deploy-step.sh --config cluster.env --dry-run runtime
 ```
 
-实际执行前必须人工确认配置并设置 `DRY_RUN=false`。M6 控制平面部署要求 etcd 健康且 PKI 已安全分发；M7 runtime 当前只部署 containerd CRI 和 CNI 基础插件，不会启动 kubelet/kube-proxy，也不会安装 Worker 本地 API Nginx 代理。M7 的完整状态和限制见 `docs/IMPLEMENTATION-STATUS.md`。
+实际执行前必须人工确认配置并设置 `DRY_RUN=false`。M6 控制平面部署要求 etcd 健康且 PKI 已安全分发；M7 runtime 部署 containerd CRI 和 CNI 基础插件，kubelet/kube-proxy 步骤仅安装二进制、凭据和禁用状态单元；Worker Nginx stream 代理由独立步骤部署。服务激活仍受 M8 Addons 与显式验收门禁控制。
 
 当前 M7 可预览的节点组件准备命令：
 
@@ -69,19 +80,28 @@ bin/deploy-step.sh --config cluster.env --dry-run kubelet-proxy
 
 该步骤不会启动 kubelet/kube-proxy；必须等 Worker 本地 API stream 代理部署完成后再激活。
 
-### M7 Worker API proxy
+### M7 Worker API 代理
 
-The Nginx stream binary is built from a SHA256-pinned official source archive on Rocky Linux 9 x86_64. Worker proxy listeners bind only to `127.0.0.1:<CONTROL_PLANE_PORT>` and pass TCP through to configured Masters; API TLS is not terminated by Nginx. Active health checks are not claimed.
-
-
-## M8 Addons (partial)
-
-Chart versions are pinned in `charts.yaml`: Calico/Tigera 3.33.0 (Kubernetes 1.37 tested, stable `crd.projectcalico.org.v1` CRDs and pinned operator/node/CNI/typha image set), CoreDNS chart 1.48.2 and the local NodeLocal DNSCache chart aligned to Kubernetes v1.37.2. Helm is pinned to v3.22.1 because the current Calico Helm installation guide specifies Helm 3. M8 currently supports only `IMAGE_MODE=local-import`. Before applying, create `images.lock.tsv` from `images.lock.tsv.example`, populate the complete chart-rendered and operator-generated image set with OCI digests and SHA256-verified archives, and place the archives in the Caddy cache. The script intentionally refuses to apply with an incomplete or missing image lock. Preview with `bin/deploy-step.sh --config cluster.env --dry-run addons`.
+Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官方源码归档构建。Worker 代理仅监听 `127.0.0.1:<CONTROL_PLANE_PORT>`，并将 TCP 流量转发至配置的 Master；TLS 仍由 API Server 终止。本项目不宣称开源 Nginx 具备主动健康检查能力。
 
 
-## Verification, cleanup, upgrade and packaging
+## M8 插件组件（部分完成）
 
-- M9: `bin/deploy-step.sh --config cluster.env verify` writes text/JSON reports. After pinning/importing `m9-test-busybox`, run `scripts/10-cluster-check.sh --config cluster.env --e2e` for temporary cross-node Pod IP, DNS, ClusterIP, NodePort and NetworkPolicy deny/recovery tests. The report also audits system-pod image references against the OCI digest/archive lock.
-- Cleanup: `bin/deploy-step.sh --config cluster.env cleanup` previews stop-only actions. Data deletion is blocked.
-- M10: `bin/deploy-step.sh --config cluster.env upgrade-plan` previews a one-minor-step upgrade; apply is blocked pending integration tests.
-- M11: `bin/deploy-step.sh --config cluster.env bundle` previews a sanitized offline bundle. Building requires a complete image lock and verified cache; `scripts/16-verify-offline-bundle.sh` verifies the output; archive metadata is normalized with `SOURCE_DATE_EPOCH`; no release is published.
+`charts.yaml` 锁定 Calico/Tigera 3.33.0（稳定版 `crd.projectcalico.org.v1` CRD 及 operator/node/CNI/Typha 镜像）、CoreDNS Chart 1.48.2 和适配 Kubernetes v1.37.2 的本地 NodeLocal DNSCache Chart。Helm 固定为 v3.22.1。M8 当前仅支持 `IMAGE_MODE=local-import`。执行前从 `images.lock.tsv.example` 创建 `images.lock.tsv`，填入 Chart 渲染和 operator 动态生成的完整镜像集合、OCI digest 及 SHA256 校验归档，并放入 Caddy 缓存。镜像锁不完整或缺失时脚本会拒绝 apply。预览命令：`bin/deploy-step.sh --config cluster.env --dry-run addons`。
+
+
+## 验收、清理、升级与离线打包
+
+- M9：执行 `bin/deploy-step.sh --config cluster.env verify` 生成文本和 JSON 报告。锁定并导入 `m9-test-busybox` 后，执行 `scripts/10-cluster-check.sh --config cluster.env --e2e`，验证临时跨节点 Pod IP、DNS、ClusterIP、NodePort 和 NetworkPolicy 拒绝/恢复；报告同时审计系统 Pod 镜像引用与 OCI digest/归档锁的一致性。
+- 清理：`bin/deploy-step.sh --config cluster.env cleanup` 仅预览停止服务操作，数据删除当前禁止。
+- M10：`bin/deploy-step.sh --config cluster.env upgrade-plan` 预览最多跨一个 Minor 版本的升级；在集成测试完成前禁止 apply。
+- M11：`bin/deploy-step.sh --config cluster.env bundle` 预览脱敏离线包。构建要求完整镜像锁和经过校验的缓存；`scripts/16-verify-offline-bundle.sh` 用于验证产物；归档元数据通过 `SOURCE_DATE_EPOCH` 归一化；当前不会自动发布 Release。
+
+## M12 部署链路安全补充（2026-11-14）
+
+- Nginx 构建和 Worker 代理入口的命令行 `--dry-run` 现在优先于配置文件 `DRY_RUN=false` 与 `--apply`；组合使用 `--apply --dry-run` 仍只输出计划，不执行构建、HTTP、SSH 或节点变更。
+- etcd `snapshot` 是远端写操作：必须显式传入 `--apply` 且配置 `DRY_RUN=false`；仅预览时不连接节点。快照操作与 etcd 部署共享本机锁，并在每条远端快照命令上按“节点锁 → etcd 组件锁”顺序获取非阻塞锁。
+- M5 当前仍只有本地 `restore-preflight`，不提供恢复执行；真实快照元数据、成员状态、全成员事务、失败回滚和 quorum 验收均未完成。
+- M5–M7 远端安装器统一先取得节点级锁，再取得组件锁。该锁防止同一节点上的不同组件安装器并发修改，但不构成跨安装节点的集群分布式事务锁；控制平面服务激活、跨节点回滚和多 coordinator 崩溃恢复仍需后续验证。
+
+- SSH Host Key 信任文件必须是普通文件、非符号链接，由当前用户或 root 持有，且不得 group/world writable；SSH 连接继续强制 `StrictHostKeyChecking=yes` 和显式 `UserKnownHostsFile`。

@@ -9,17 +9,22 @@ source "$ROOT/scripts/lib/nodes.sh"
 source "$ROOT/scripts/lib/manifest.sh"
 source "$ROOT/scripts/lib/ssh.sh"
 source "$ROOT/scripts/lib/etcd.sh"
+source "$ROOT/scripts/lib/etcd-restore.sh"
 
 CONFIG="$ROOT/cluster.env"
 COMMAND=
 APPLY=false
+RESTORE_SNAPSHOT=
+RESTORE_MANIFEST=
 while (($#)); do
   case $1 in
     --config) (($# >= 2)) || exit 2; CONFIG=$2; shift 2 ;;
     --apply) APPLY=true; shift ;;
     --dry-run) KS_DRY_RUN=true; KS_DRY_RUN_OVERRIDE=true; shift ;;
-    --help|-h) printf 'Usage: %s [--config FILE] [--dry-run] [--apply] deploy|health|member-list|snapshot\n' "$0"; exit 0 ;;
-    deploy|health|member-list|snapshot) [[ -z $COMMAND ]] || exit 2; COMMAND=$1; shift ;;
+    --snapshot) (($# >= 2)) || exit 2; RESTORE_SNAPSHOT=$2; shift 2 ;;
+    --manifest) (($# >= 2)) || exit 2; RESTORE_MANIFEST=$2; shift 2 ;;
+    --help|-h) printf 'Usage: %s [--config FILE] [--dry-run] [--apply] deploy|health|member-list|snapshot|restore-preflight --snapshot FILE --manifest FILE\n' "$0"; exit 0 ;;
+    deploy|health|member-list|snapshot|restore-preflight) [[ -z $COMMAND ]] || exit 2; COMMAND=$1; shift ;;
     *) printf 'Unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -126,12 +131,13 @@ ks_etcd_cli() {
     member-list) ks_etcd_ssh_root "$address" "$user" "$port" "${cli[@]}" member list -w table ;;
     snapshot)
       local stamp snapshot
+      local -a remote_lock=(flock -n /run/lock/ks-deploy-shell-node.lock flock -n /run/lock/ks-deploy-shell-etcd.lock)
       stamp=$(date -u '+%Y%m%dT%H%M%SZ')
       snapshot=$ETCD_BACKUP_DIR/$CLUSTER_NAME-$stamp.db
-      ks_etcd_ssh_root "$address" "$user" "$port" install -d -o root -g root -m 0700 "$ETCD_BACKUP_DIR"
-      ks_etcd_ssh_root "$address" "$user" "$port" env ETCDCTL_API=3 etcdctl "--endpoints=https://127.0.0.1:$ETCD_CLIENT_PORT" "--cacert=$ETCD_CONFIG_DIR/pki/ca.crt" "--cert=$ETCD_CONFIG_DIR/pki/healthcheck-client.crt" "--key=$ETCD_CONFIG_DIR/pki/healthcheck-client.key" snapshot save "$snapshot"
-      ks_etcd_ssh_root "$address" "$user" "$port" etcdutl snapshot status "$snapshot" --write-out=table
-      ks_etcd_ssh_root "$address" "$user" "$port" sha256sum "$snapshot"
+      ks_etcd_ssh_root "$address" "$user" "$port" "${remote_lock[@]}" install -d -o root -g root -m 0700 "$ETCD_BACKUP_DIR"
+      ks_etcd_ssh_root "$address" "$user" "$port" "${remote_lock[@]}" env ETCDCTL_API=3 etcdctl "--endpoints=https://127.0.0.1:$ETCD_CLIENT_PORT" "--cacert=$ETCD_CONFIG_DIR/pki/ca.crt" "--cert=$ETCD_CONFIG_DIR/pki/healthcheck-client.crt" "--key=$ETCD_CONFIG_DIR/pki/healthcheck-client.key" snapshot save "$snapshot"
+      ks_etcd_ssh_root "$address" "$user" "$port" "${remote_lock[@]}" etcdutl snapshot status "$snapshot" --write-out=table
+      ks_etcd_ssh_root "$address" "$user" "$port" "${remote_lock[@]}" sha256sum "$snapshot"
       ks_log WARN "Snapshot retained on etcd member $node at $snapshot; copy it to independently managed encrypted backup storage"
       ;;
   esac
@@ -148,9 +154,29 @@ case $COMMAND in
       ks_etcd_cli member-list
     fi
     ;;
-  health|member-list|snapshot)
+  restore-preflight)
+    [[ $APPLY != true ]] || { ks_log ERROR '--apply is not valid for restore-preflight'; exit 2; }
+    [[ -n $RESTORE_SNAPSHOT && -n $RESTORE_MANIFEST ]] || { ks_log ERROR 'restore-preflight requires --snapshot and --manifest'; exit 2; }
+    ks_etcd_restore_manifest_validate "$RESTORE_MANIFEST" "$RESTORE_SNAPSHOT" "$CLUSTER_NAME" "$ETCD_VERSION" "$ETCD_CLUSTER"
+    ;;
+  health|member-list)
     [[ $APPLY != true ]] || { ks_log ERROR '--apply is only valid for deploy'; exit 2; }
     [[ ${KS_DRY_RUN:-true} == false ]] || { ks_log INFO "DRY-RUN: would execute etcd $COMMAND"; exit 0; }
     ks_etcd_cli "$COMMAND"
+    ;;
+  snapshot)
+    if [[ $APPLY != true ]]; then
+      if ks_is_true "${KS_DRY_RUN:-true}"; then
+        ks_log INFO 'DRY-RUN: would create an etcd snapshot; explicit --apply is required to execute'
+        exit 0
+      fi
+      ks_log ERROR 'etcd snapshot creation requires explicit --apply'
+      exit 78
+    fi
+    if ks_is_true "${KS_DRY_RUN:-true}"; then
+      ks_log INFO 'DRY-RUN: would create an etcd snapshot'
+      exit 0
+    fi
+    ks_with_lock "$ROOT/state/etcd-deploy.lock" ks_etcd_cli snapshot
     ;;
 esac

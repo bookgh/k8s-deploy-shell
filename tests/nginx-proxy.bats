@@ -25,3 +25,23 @@ setup() {
   grep -Fq -- '--with-stream' "$ROOT/scripts/08-build-nginx-stream.sh"
   grep -Fq -- '--without-http' "$ROOT/scripts/08-build-nginx-stream.sh"
 }
+
+@test "Nginx build --dry-run overrides DRY_RUN=false and --apply" {
+  config="$BATS_TEST_TMPDIR/nginx-build.env"
+  cp "$ROOT/cluster.env.example" "$config"
+  sed -i 's/^DRY_RUN=true$/DRY_RUN=false/' "$config"
+  run "$ROOT/scripts/08-build-nginx-stream.sh" --config "$config" --apply --dry-run build
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"DRY-RUN: build Nginx"* ]]
+  [ ! -e "$ROOT/state/generated-artifacts.tsv" ]
+}
+
+@test "Worker proxy --dry-run overrides DRY_RUN=false and --apply" {
+  config="$BATS_TEST_TMPDIR/worker-proxy.env"
+  cp "$ROOT/cluster.env.example" "$config"
+  sed -i 's/^DRY_RUN=true$/DRY_RUN=false/' "$config"
+  run "$ROOT/scripts/09-deploy-worker-proxy.sh" --config "$config" --apply --dry-run deploy
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"DRY-RUN: deploy Nginx"* ]]
+  [ ! -e "$ROOT/state/generated-artifacts.tsv" ]
+}
