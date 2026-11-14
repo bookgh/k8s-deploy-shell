@@ -81,3 +81,12 @@ SH
   [ ! -e "$SSH_CAPTURE" ]
   [ ! -e /tmp/ks-ssh-injection ]
 }
+
+@test "SSH rejects group/world writable known_hosts before invoking ssh" {
+  chmod 0666 "$BATS_TEST_TMPDIR/ssh/known_hosts"
+  KS_DRY_RUN=false
+  run ks_ssh 192.0.2.11 uname -m
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"must not be group/world writable"* ]]
+  [ ! -e "$SSH_CAPTURE" ]
+}

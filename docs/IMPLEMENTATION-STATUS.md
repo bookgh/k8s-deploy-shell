@@ -131,3 +131,7 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 - 该模式修正后的最终提交 CI 需要重新运行；在新 run 完成前，不将本轮 CI 标记为通过。Kubernetes CLI flag workflow 在首轮提交上通过。
 
 - 最终修正提交 `0b1086a730dd3eb6a9632ef86acf478cf50caaee` 已推送；本记录提交后应以最新分支 HEAD 的 workflow 结果为准，不能沿用首轮失败结果。
+
+## 十二、SSH Host Key 信任文件权限加固（2026-11-14）
+
+代码审查发现 `StrictHostKeyChecking=yes` 虽已启用，但 `known_hosts` 只校验普通文件/非符号链接/可读性，未防止其他本地用户修改信任锚。现新增 owner 与 mode 门禁：文件必须由当前有效 UID 或 root 持有，且 group/world writable 位必须为 0；检查失败在执行 SSH 前退出。新增 Bats 用例验证 mode 0666 被拒绝且 fake SSH 未被调用。该检查不替代 Host Key 首次录入、轮换审批或真实节点指纹核验。

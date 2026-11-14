@@ -103,3 +103,5 @@ Nginx stream 二进制由 Rocky Linux 9 x86_64 环境根据 SHA256 锁定的官�
 - etcd `snapshot` 是远端写操作：必须显式传入 `--apply` 且配置 `DRY_RUN=false`；仅预览时不连接节点。快照操作与 etcd 部署共享本机锁，并在每条远端快照命令上按“节点锁 → etcd 组件锁”顺序获取非阻塞锁。
 - M5 当前仍只有本地 `restore-preflight`，不提供恢复执行；真实快照元数据、成员状态、全成员事务、失败回滚和 quorum 验收均未完成。
 - M5–M7 远端安装器统一先取得节点级锁，再取得组件锁。该锁防止同一节点上的不同组件安装器并发修改，但不构成跨安装节点的集群分布式事务锁；控制平面服务激活、跨节点回滚和多 coordinator 崩溃恢复仍需后续验证。
+
+- SSH Host Key 信任文件必须是普通文件、非符号链接，由当前用户或 root 持有，且不得 group/world writable；SSH 连接继续强制 `StrictHostKeyChecking=yes` 和显式 `UserKnownHostsFile`。

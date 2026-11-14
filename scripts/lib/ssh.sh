@@ -31,8 +31,25 @@ ks_ssh_validate_parameters() {
 
 ks_ssh_validate_known_hosts() {
   local known_hosts=${SSH_KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}
+  local mode owner uid
   [[ -f $known_hosts && ! -L $known_hosts && -r $known_hosts ]] || {
     ks_log ERROR "Known hosts must be a readable regular file, not a symlink: $known_hosts"
+    return 2
+  }
+  read -r mode owner < <(stat -c '%a %u' -- "$known_hosts") || {
+    ks_log ERROR "Cannot inspect known_hosts ownership and mode: $known_hosts"
+    return 2
+  }
+  uid=$(id -u 2>/dev/null) || {
+    ks_log ERROR 'Cannot determine effective UID for known_hosts validation'
+    return 2
+  }
+  [[ $mode =~ ^[0-7]{3,4}$ && ( $owner == "$uid" || $owner == 0 ) ]] || {
+    ks_log ERROR "Known hosts must be owned by the current user or root: $known_hosts"
+    return 2
+  }
+  (( (8#$mode & 0022) == 0 )) || {
+    ks_log ERROR "Known hosts must not be group/world writable: $known_hosts"
     return 2
   }
 }

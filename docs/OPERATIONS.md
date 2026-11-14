@@ -181,3 +181,13 @@ scripts/04-deploy-etcd.sh --config cluster.env --apply snapshot
 - etcd snapshot 使用本机 etcd 锁；远端 snapshot 命令依次获取节点锁和 etcd 组件锁。
 - etcd、控制平面、containerd、kubelet/kube-proxy、Worker proxy 五类远端安装器统一按“节点锁 → 组件锁”非阻塞获取，冲突返回 75。
 - 该锁仅覆盖各远端安装器进程的生命周期。跨节点集群级锁、独立安装节点之间的 coordinator 锁，以及控制平面服务激活/多节点回滚的完整临界区尚未实现。
+
+### SSH Host Key 文件权限
+
+`SSH_KNOWN_HOSTS_FILE` 必须是当前用户或 root 持有的普通文件，不能是符号链接，也不能对 group/world 可写。建议初始化后设置：
+
+```bash
+chmod 0600 config/known_hosts
+```
+
+SSH 仍使用 `BatchMode=yes`、`StrictHostKeyChecking=yes` 和显式 `UserKnownHostsFile`；不得通过关闭 Host Key 校验绕过首次连接或密钥轮换问题。

@@ -28,3 +28,5 @@ SSH 包装器仅接受受限字符集的远端命令参数，不允许空格、S
 - M5–M7 远端安装器统一使用 `/run/lock/ks-deploy-shell-node.lock`，然后获取各自组件锁；冲突返回 75。所有新增嵌套锁必须保持该顺序，禁止反向获取。
 - 节点锁是单节点互斥，不是跨节点分布式事务。多个安装节点同时操作同一集群、控制平面服务启动与 readiness 等跨命令临界区、SSH 断线后的集群级恢复语义仍须 fail-closed 设计和故障注入验证。
 - Bats 合成测试和 GitHub Actions 不能证明 Rocky Linux 9 生产安全性；不得据此宣称 etcd 恢复、quorum 或生产验收完成。
+
+- SSH Host Key 信任文件除普通文件/非符号链接/可读外，还必须由当前有效 UID 或 root 持有，并拒绝 group/world writable（mode & 0022 != 0）；验证失败时在调用 ssh 前 fail-closed。
