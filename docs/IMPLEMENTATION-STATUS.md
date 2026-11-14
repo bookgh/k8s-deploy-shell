@@ -135,3 +135,9 @@ GitHub Actions Shell CI run [43390326016](https://github.com/bookgh/k8s-deploy-s
 ## 十二、SSH Host Key 信任文件权限加固（2026-11-14）
 
 代码审查发现 `StrictHostKeyChecking=yes` 虽已启用，但 `known_hosts` 只校验普通文件/非符号链接/可读性，未防止其他本地用户修改信任锚。现新增 owner 与 mode 门禁：文件必须由当前有效 UID 或 root 持有，且 group/world writable 位必须为 0；检查失败在执行 SSH 前退出。新增 Bats 用例验证 mode 0666 被拒绝且 fake SSH 未被调用。该检查不替代 Host Key 首次录入、轮换审批或真实节点指纹核验。
+
+## 十三、自动化验证确认与 Host Key 权限回归（2026-11-14）
+
+- 文件模式修正后的代码提交 `c8ae03771f0329b285946c2edcf5cb2525a26951`：Shell CI 成功，Bats 104/104；Bash Syntax、ShellCheck、CFSSL、Helm/Chart、上游制品 SHA256、Shell-only 门禁均通过。shfmt 仍输出非阻断格式差异 warning。
+- 仅更新状态文档的提交 `401daac1e9cd2c552e346d29e090fe9d6c407c28`：Shell CI run [43538498774](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538498774) 与 CLI flag run [43538498832](https://github.com/bookgh/k8s-deploy-shell/actions/runs/43538498832) 均成功。
+- 后续提交 `dad2031d6b10ecb0a6f826187474bcaa0b1b61af` 追加 known_hosts 所有者和 group/world 写权限门禁及 Bats 用例；该新增代码的 workflow 结果仍待确认。
